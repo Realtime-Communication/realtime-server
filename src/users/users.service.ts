@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+// import { CreateUserDto } from './dto/create-user.dto';
+// import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { HelpersService } from 'src/helpers/helpers.service';
@@ -27,7 +27,7 @@ export class UsersService {
     return false;
   }
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: any) {
     try {
       if (await this.emailExist(createUserDto.email)) {
         createUserDto.email = createUserDto.email.toLowerCase();
@@ -76,7 +76,7 @@ export class UsersService {
       return user;
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserDto: any) {
     try {
       if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
       if (await this.emailExist(updateUserDto.email, id)) {
