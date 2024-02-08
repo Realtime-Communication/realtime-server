@@ -57,7 +57,7 @@ export class UsersService {
 
   async findOne(id: string) {
     try {
-      if(!mongoose.Types.ObjectId.isValid(id))  return this.helpersService.responseError("User not exist on system");
+      // if(!mongoose.Types.ObjectId.isValid(id))  return this.helpersService.responseError("User not exist on system");
       const user = await this.userModel.findOne({
         _id: id,
         deleted: false
@@ -78,7 +78,7 @@ export class UsersService {
 
   async update(id: string, updateUserDto: any) {
     try {
-      if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
+      // if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
       if (await this.emailExist(updateUserDto.email, id)) {
         updateUserDto.password = await this.helpersService.hashingPassword(updateUserDto.password);
         await this.userModel.updateOne(
@@ -94,7 +94,7 @@ export class UsersService {
 
   async remove(id: string) {
     try {
-      if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
+      // if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
       await this.userModel.updateOne(
         { _id: id},
         { $set: { deleted: true } }

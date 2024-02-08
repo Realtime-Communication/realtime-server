@@ -34,7 +34,7 @@ async function bootstrap() {
   app.useGlobalGuards( new JwtAuthGuard(reflector) );
   app.useGlobalGuards( new RolesGuard(reflector) );
 
-  app.useGlobalPipes(new ValidationPipe());
+  // app.useGlobalPipes(new ValidationPipe());
 
   await app.listen(configService.get<string>("PORT"));
 }
