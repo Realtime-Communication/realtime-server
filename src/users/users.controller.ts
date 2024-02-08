@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+// import { CreateUserDto } from './dto/create-user.dto';
+// import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/roles/role.enum';
 import { Public } from 'src/decorators/public.decorator';
@@ -14,7 +14,7 @@ export class UsersController {
   @Post('/create')
   create(
     @Body()
-    createUserDto: CreateUserDto
+    createUserDto: any
   ) {
     return this.usersService.create(createUserDto);
   }
@@ -39,7 +39,7 @@ export class UsersController {
     @Param('id') 
     id: string,
     @Body()
-    updateUserDto: UpdateUserDto
+    updateUserDto: any
   ) {
     return this.usersService.update(id, updateUserDto);
   }
