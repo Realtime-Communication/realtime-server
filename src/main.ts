@@ -11,24 +11,11 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
-  app.enableCors(
-    {
-      "origin": "*",
-      "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
-      "preflightContinue": false
-    }
-  );
+  app.enableCors();
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
   app.setBaseViewsDir(join(__dirname, '..', 'views'));
   app.setViewEngine('ejs');
-
-  // io.on('connection', (socket) => {
-  //   console.log('a user connected');
-  //   socket.on('disconnect', () => {
-  //     console.log('user disconnected');
-  //   });
-  // });
 
   const reflector = app.get( Reflector );
   app.useGlobalGuards( new JwtAuthGuard(reflector) );

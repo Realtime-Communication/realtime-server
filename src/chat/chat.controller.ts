@@ -39,4 +39,11 @@ export class ChatController {
         if(to_id.id === "all") return await this.chatService.getChatGlobal(req.user.userId);
         else return await this.chatService.getChatWithId(to_id.id, req.user.userId);
     }
+
+    @Get('/api/getlastchats')
+    async GetLastChats(
+        @Request() req: any
+    ) {
+        return this.chatService.getLastChats(req.user.userId);
+    }
 }

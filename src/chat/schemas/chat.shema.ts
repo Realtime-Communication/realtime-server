@@ -32,6 +32,9 @@ export class Chat {
   @Prop()
   content: string;
 
+  @Prop()
+  msgTime: string
+
   @Prop({
     default: false
   })

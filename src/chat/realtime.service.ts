@@ -4,6 +4,7 @@ import { Model } from "mongoose";
 import { HelpersService } from "src/helpers/helpers.service";
 import { Chat } from "./schemas/chat.shema";
 import { UsersService } from '../users/users.service';
+import { User } from "src/users/schemas/user.schema";
 
 
 @Injectable()
@@ -13,6 +14,8 @@ export class ChatService {
     constructor(
         @InjectModel(Chat.name)
         private chatModel: Model<Chat>,
+        @InjectModel(User.name)
+        private userModel: Model<User>,
         private readonly helpersService: HelpersService,
         private readonly usersService: UsersService
     ){
@@ -83,6 +86,28 @@ export class ChatService {
             return [];
         } catch (error) {
             return this.helpersService.responseError("cannor get chat global before !");
+        }
+    }
+
+    async getLastChats(userId: string) {
+        try {
+            const ids = await this.userModel.distinct('_id');
+            const resultId = [];
+            const resultObj = [];
+            for(const id of ids) {
+                const [lastRecord] = await this.chatModel.find({
+                    $or: [
+                        { from_id: userId, to_id: id },
+                        { from_id: id, to_id: userId }
+                    ],
+                    deleted: false
+                }).sort({createdAt: 'desc'}).limit(1).select('from_id content from msgTime');
+                resultId.push(id);
+                resultObj.push(lastRecord);
+            }
+            return [resultId, resultObj];
+        } catch (error) {
+            this.helpersService.responseError('cannot get last chat of another friends !');
         }
     }
 }

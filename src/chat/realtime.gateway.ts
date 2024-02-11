@@ -7,7 +7,6 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
-import { Chat } from './schemas/chat.shema';
 import { ChatService } from './realtime.service';
 
 @WebSocketGateway({
@@ -23,96 +22,59 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   @WebSocketServer()
   server: Server;
-  wsClients = [];
+  wsClients = new Map<string, string>();
 
   @SubscribeMessage('sendMessage')
   async messageInGoing(client: any, data: any) {
-    await this.chatService.saveMessage(data);
-    this.server.of('/').sockets.forEach((socket: any) => {
-      console.log(socket.userId, data.to);
-      if(socket.userId == data.to_id) {
-        this.server.to(socket.id).emit('messageComing', data);
-      }
-    })
-    this.server.to(client.id).emit('messageComing', data);
-  }
-
-  @SubscribeMessage('initial')
-  async userInitial(client: any, payload: any) {
-    client.userId = payload.id;
-    client.userName = payload.userName;
+    const date = new Date();
+    data.msgTime = date.toLocaleString();
+    await this.chatService.saveMessage(data); 
+    this.server.to([client.id, this.wsClients.get(data.to_id)]).emit('messageComing', data);
+    this.server.to([client.id, this.wsClients.get(data.to_id)]).emit('loadLastMessage', {});
   }
 
   @SubscribeMessage('callUser')
   async callUser( client: Socket, data: any) {
-    let finded = false;
     console.log(`Incoming call from ${data.from} to ${data.userToCall}`);
-    this.server.of('/').sockets.forEach((socket: any) => {
-      if(socket.userId == data.userToCall) {
-        console.log("Has Finded user");
-        finded = true;
-        this.server.to(socket.id).emit("callUser", {
-          signal: data.signalData,
-          from: data.from,
-          name: data.name,
-        });
-      }
-    });
-    if(!finded) this.server.to(client.id).emit('user_not_online', {})
+    const userToCall = this.wsClients.get(data.userToCall);
+    if(userToCall) {
+      console.log('Has finded user to call !');
+      this.server.to(userToCall).emit("open_call", {
+        receiver: data.userToCall,
+        callerId: data.from,
+        callerName: data.name
+      });
+      this.server.to(userToCall).emit("callUser", {
+        signal: data.signalData,
+        from: data.from,
+        name: data.name,
+      });
+    } else this.server.to(client.id).emit('user_not_online', {})
   };
+
+  @SubscribeMessage('typing')
+  async userIsTyping(client: Socket, data: any) {
+    this.server.to(this.wsClients.get(data.otherId)).timeout(3000).emit("typing", {otherId: client.handshake.query.myParam});
+  }
 
   @SubscribeMessage('answerCall')
   async answerCall(client: Socket, data: any) {
-    console.log("xnxx");
-    this.server.of('/').sockets.forEach((socket: any) => {
-      console.log(socket.userId, data.to);
-      if(socket.userId == data.to) {
-        console.log("had send acception from sever !")
-        this.server.to(socket.id).emit("callAccepted", data.signal);
-      }
-    })
+    this.server.to(this.wsClients.get(data.to)).emit("callAccepted", data.signal);
   }
 
   @SubscribeMessage('refuse_call')
   async refuseCall(client: Socket, data: any) {
-    this.server.of('/').sockets.forEach((socket: any) => {
-      if(socket.userId == data.otherId) {
-        this.server.to(socket.id).emit("refuse_call", {});
-        this.server.to(client.id).emit("refuse_call", {});
-      }
-    })
+    this.server.to([this.wsClients.get(data.otherId), client.id]).emit("refuse_call", {otherId: data.otherId});
   }
 
   @SubscribeMessage('give_up_call')
   async giveUpCall(client: Socket, data: any) {
-    this.server.to(client.id).emit("give_up_call", {});
-    this.server.of('/').sockets.forEach((socket: any) => {
-      if(socket.userId == data.otherId) {
-        this.server.to(socket.id).emit("give_up_call", {});
-      }
-    })
-  }
-
-  @SubscribeMessage('open_call')
-  async openCall(client: Socket, data: any) {
-    this.server.of('/').sockets.forEach((socket: any) => {
-      if(socket.userId == data.receiverId) {
-        this.server.to(socket.id).emit("open_call", {
-          receiver: data.receiverId,
-          callerId: data.callerId
-        });
-      }
-    })
+    this.server.to([this.wsClients.get(data.otherId), client.id]).emit("give_up_call", {});
   }
 
   @SubscribeMessage('close_call')
   async closeCall(client: Socket, data: any) {
-    this.server.to(client.id).emit("close_call", {});
-    this.server.of('/').sockets.forEach((socket: any) => {
-      if(socket.userId == data.otherId) {
-        this.server.to(socket.id).emit("close_call", {});
-      }
-    })
+    this.server.to([this.wsClients.get(data.otherId), client.id]).emit("close_call", {});
   }
 
   @SubscribeMessage('complete_close_call')
@@ -125,11 +87,18 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   async handleDisconnect(client: Socket) {
-    console.log("has a user disconnect, => REST user = ", this.server.of('/').sockets.size)
+    this.wsClients.delete(client.handshake.query.myParam.toString());
+    this.server.emit('listOnline', {
+      listOnline: Array.from(this.wsClients.keys())
+    })
+    console.log("has a user disconnect, => REST user = ", this.wsClients.size);
   }
 
   handleConnection(client: any, ...args: any[]) {
-    client.emit("me", client.id);
-    console.log("has a connect user => TOTAL user = ", this.server.of('/').sockets.size);
+    this.wsClients.set(client.handshake.query.myParam, client.id);
+    this.server.emit('listOnline', {
+      listOnline: Array.from(this.wsClients.keys())
+    })
+    console.log("has a connect user => TOTAL user = ", this.wsClients.size);
   }
 }
