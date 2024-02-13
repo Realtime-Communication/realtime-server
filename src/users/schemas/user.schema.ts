@@ -15,7 +15,7 @@ export class User {
   password: string;
 
   @Prop({ required: true })
-  userName: string;
+  name: string;
 
   @Prop()
   address: string;

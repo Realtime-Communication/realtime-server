@@ -74,7 +74,7 @@ export class ChatService {
             }).sort({ createdAt: "asc"});
             return {
                 chats,
-                otherName: otherPerson["userName"]
+                otherName: otherPerson["name"]
             };
         } catch (error) {
             return this.helpersService.responseError(`Cannot get chats with friend id ${to_id} !`);

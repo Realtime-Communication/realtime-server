@@ -10,9 +10,9 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     super();
   }
 
-  async validate(email: string, password: string): Promise<any> {
+  async validate(username: string, password: string): Promise<any> {
     this.configService.get<string>('JWT_ACCESS_TOKEN')
-    const user = await this.authService.validateUser(email, password);
+    const user = await this.authService.validateUser(username, password);
     if (!user) {
       throw new UnauthorizedException();
     }

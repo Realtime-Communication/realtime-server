@@ -9,29 +9,22 @@ export class ChatController {
     private readonly chatService: ChatService
   ){}
 
-    @Get('/mychats')
-    @Render('index')
-    async Home(
-        @Request() req
-    ){
-        this.chatService.setUser(req.user.userId, req.user.username);
-    }
 
-    @Get('/api/mychats')
+    @Get('/mychats')
     async Chat(
         @Request() req
     ) {
         return await this.chatService.getMyChats(req.user.userId);
     }
 
-    @Get('/api/friendschats')
+    @Get('/friendschats')
     async AllFriends(
         @Request() req
     ) {
         return await this.chatService.getAllFriends(req.user.userId);
     }
 
-    @Get('/api/GetChatWithId/:id')
+    @Get('/GetChatWithId/:id')
     async GetChatWithId(
         @Param() to_id,
         @Request() req
@@ -40,7 +33,7 @@ export class ChatController {
         else return await this.chatService.getChatWithId(to_id.id, req.user.userId);
     }
 
-    @Get('/api/getlastchats')
+    @Get('/getlastchats')
     async GetLastChats(
         @Request() req: any
     ) {
