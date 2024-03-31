@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 // import { CreateUserDto } from './dto/create-user.dto';
 // import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { HelpersService } from 'src/helpers/helpers.service';
 import { User } from './schemas/user.schema';
+import { IUser } from './user.interface';
 
 @Injectable()
 export class UsersService {
@@ -28,43 +29,36 @@ export class UsersService {
   }
 
   async create(createUserDto: any) {
-    try {
-      if (await this.emailExist(createUserDto.email)) {
-        createUserDto.email = createUserDto.email.toLowerCase();
-        createUserDto.password = await this.helpersService.hashingPassword(createUserDto.password);
-        const createUser = new this.userModel(createUserDto);
-        await createUser.save();
-        return this.helpersService.responeSuccess("Create user success !");
-      } else {
-        return this.helpersService.responseError("User email has exist !");
-      }
-    } catch (error) {
-      this.helpersService.responseError("Create user fail !");
-    }
+    if (await this.emailExist(createUserDto.email)) {
+      createUserDto.email = createUserDto.email.toLowerCase();
+      createUserDto.password = await this.helpersService.hashingPassword(createUserDto.password);
+      const createUser = new this.userModel(createUserDto);
+      await createUser.save();
+      return createUserDto;
+    } else throw new BadRequestException("User email has exist !");
   }
 
-  async findAll(userId: string) {
+  async friends( user: IUser ) {
     try {
       const users = await this.userModel.find({
-        _id: { $ne: [userId] },
+        _id: { $nin: [user._id] },
         deleted: false
       }).select("-password -createdAt");
       return users;
     } catch (error) {
-      return this.helpersService.responseError();
+      return this.helpersService.responseError('cannot get all friend at user service');
     }
   }
 
   async findOne(id: string) {
     try {
-      // if(!mongoose.Types.ObjectId.isValid(id))  return this.helpersService.responseError("User not exist on system");
       const user = await this.userModel.findOne({
         _id: id,
-        deleted: false
+        deleted: false,
       }).select("-token -password -createdAt");
-      if (user) return user;
+      return user;
     } catch (error) {
-      return this.helpersService.responseError("Have error happen");
+      return error;
     }
   }
 
@@ -101,8 +95,7 @@ export class UsersService {
       )
       return this.helpersService.responeSuccess("delete success");
     } catch (error) {
-      return this.helpersService.responseError("delete fail");
+      return error;
     }
   }
-
 }

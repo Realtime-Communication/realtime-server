@@ -37,6 +37,16 @@ export class User {
 
   @Prop()
   friends?: string[];
+
+  @Prop({ type: [] })
+  groups?: string[];
+
+  @Prop()
+  image?: string;
+
+  @Prop({ default: true })
+  active: boolean;
+  
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

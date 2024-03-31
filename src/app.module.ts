@@ -6,11 +6,27 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { HelpersModule } from './helpers/helpers.module';
-import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { Chat, ChatSchema } from './chat/schemas/chat.shema';
 import { ChatModule } from './chat/realtime.module';
-import { ChatGateway } from './chat/realtime.gateway';
+import { GroupsModule } from './groups/groups.module';
+import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-store';
+
+export const RedisOptions: CacheModuleAsyncOptions = {
+  isGlobal: true,
+  imports: [ConfigModule],
+  useFactory: async (configService: ConfigService) => {
+    const store = await redisStore({
+      url: process.env.REDIS_URL,
+    });
+    return {
+      store: () => store,
+      ttl: configService.get<string>("REDIS_TTL"),
+      host: configService.get<string>("REDIS_HOST"),
+      port: configService.get<string>("REDIS_PORT"),
+    };
+  },
+  inject: [ConfigService],
+};
 
 @Module({
   imports: [
@@ -24,11 +40,12 @@ import { ChatGateway } from './chat/realtime.gateway';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    CacheModule.registerAsync(RedisOptions),
     UsersModule,
-    AuthModule, // to know it have exist
+    AuthModule,
     HelpersModule,
     ChatModule,
-    ChatModule,
+    GroupsModule,
   ],
   controllers: [AppController],
   providers: [

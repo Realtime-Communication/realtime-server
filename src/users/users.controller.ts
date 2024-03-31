@@ -5,6 +5,9 @@ import { UsersService } from './users.service';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/roles/role.enum';
 import { Public } from 'src/decorators/public.decorator';
+import { IUser } from './user.interface';
+import { User } from 'src/decorators/user.decorator';
+import mongoose from 'mongoose';
 
 @Controller('users')
 export class UsersController {
@@ -16,20 +19,20 @@ export class UsersController {
     @Body()
     createUserDto: any
   ) {
+    console.log('1')
     return this.usersService.create(createUserDto);
   }
 
-  @Get()
-  findAll(
-    @Request() req
+  @Get('/friends')
+  friends(
+    @User() user: IUser
   ) {
-    return this.usersService.findAll(req.user.userId);
+    return this.usersService.friends(user);
   }
 
   @Get('/:id')
   findOne(
-    @Param('id') 
-    id: string,
+    @Param('id') id: string
   ) {
     return this.usersService.findOne(id);
   }

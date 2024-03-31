@@ -8,17 +8,17 @@ export class HelpersService {
 
   responeSuccess (message: string = "", response = {}) {
     const result = {
-        code: 200,
-        message: message == "" ? 'Success' : message
+      statusCode: 200,
+      message: message
     }
-    response[0] && (result["result"] = response);
+    response[0] && (result["data"] = response);
     return result;
   }
 
   responseError (message: string = "") {
     const result = {
-        code: 400,
-        message: message == "" ? 'Fail' : message
+      statusCode: 400,
+      message: message
     }
     return result;
   }

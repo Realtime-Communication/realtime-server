@@ -1,6 +1,8 @@
-import { Controller, Get, Injectable, Param, Post, Render, Req, Request, Res, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Injectable, Param, Post, Query, Render, Req, Request, Res, UseGuards } from '@nestjs/common';
 import { ChatService } from './realtime.service';
-import { Public } from 'src/decorators/public.decorator';
+import { IUser } from 'src/users/user.interface';
+import { User } from 'src/decorators/user.decorator';
+import mongoose from 'mongoose';
 
 @Injectable()
 @Controller('chats')
@@ -9,7 +11,6 @@ export class ChatController {
     private readonly chatService: ChatService
   ){}
 
-
     @Get('/mychats')
     async Chat(
         @Request() req
@@ -17,26 +18,35 @@ export class ChatController {
         return await this.chatService.getMyChats(req.user.userId);
     }
 
-    @Get('/friendschats')
+    @Get('/conversations')
     async AllFriends(
-        @Request() req
+        @User() user: IUser
     ) {
-        return await this.chatService.getAllFriends(req.user.userId);
+        return await this.chatService.conversations(user);
     }
 
-    @Get('/GetChatWithId/:id')
+    @Get('/with-id/:id')
     async GetChatWithId(
-        @Param() to_id,
-        @Request() req
+        @Param('id') to_id: string,
+        @User() user: IUser,
+        @Query('limit') limit: number
     ) {
-        if(to_id.id === "all") return await this.chatService.getChatGlobal(req.user.userId);
-        else return await this.chatService.getChatWithId(to_id.id, req.user.userId);
+        if(to_id == 'all') return await this.chatService.getChatGlobal(user._id);
+        else 
+        return await this.chatService.getChatWithId(to_id, limit, user._id);
     }
 
     @Get('/getlastchats')
     async GetLastChats(
-        @Request() req: any
+        @User() user: IUser
     ) {
-        return this.chatService.getLastChats(req.user.userId);
+        return this.chatService.getLastChats(user);
+    }
+
+    @Delete('/delete/:id')
+    async DeleteChat(
+        @Param('id') id: string
+    ) {
+        return this.chatService.deleteChat(id);
     }
 }
