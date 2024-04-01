@@ -13,6 +13,9 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
 import redisClient from './redis/redis.client';
 import { RedisIoAdapter } from './redis/redis.adapter';
+import { SwaggerModule, DocumentBuilder, SwaggerDocumentOptions } from '@nestjs/swagger';
+import { UsersModule } from './users/users.module';
+import { ChatModule } from './chat/realtime.module';
 
 
 
@@ -33,6 +36,24 @@ async function bootstrap() {
     });
     await redisClient.connect();
   }
+
+  const config = new DocumentBuilder()
+    .setTitle('Talk Together')
+    .setDescription('API Description')
+    .setVersion('1.0')
+    .build();
+
+  const options: SwaggerDocumentOptions = {
+    deepScanRoutes: true,
+    ignoreGlobalPrefix: true,
+    operationIdFactory: (
+      controllerKey: string,
+      methodKey: string
+    ) => methodKey
+  };
+  const document = SwaggerModule.createDocument(app, config, options);
+
+  SwaggerModule.setup('api', app, document);
 
   app.enableCors();
 
