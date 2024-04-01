@@ -1,5 +1,5 @@
 # Getting Started with Create React App
-##Swagger: (http://localhost:8080/api) (with port 8080)
+## Swagger: (http://localhost:8080/api) (with port 8080)
 
 .env
 |PORT=8080
