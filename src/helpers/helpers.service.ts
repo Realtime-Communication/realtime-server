@@ -22,12 +22,12 @@ export class HelpersService {
     return result;
   }
 
-  static hashingPassword(password: string) {
-    return bcrypt.hash(password, this.SALT_OR_ROUNDS);
+  static async hashingPassword(password: string) {
+    return await bcrypt.hash(password, this.SALT_OR_ROUNDS);
   }
 
   static decodePassword(inputPassword: string, userPassword: string) {
     return bcrypt.compareSync(inputPassword, userPassword);
   }
-  
+
 }

@@ -9,6 +9,7 @@ import { UserRepository } from './users.repository';
 import { SUser } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserBuilder } from './user.builder';
+import { UserResponse } from './user-data.response';
 
 @Injectable()
 export class UsersService {
@@ -26,78 +27,78 @@ export class UsersService {
     return user && id != user.id;
   }
 
-  async addUser(createUserDto: CreateUserDto) {
+  async addUser(createUserDto: CreateUserDto): Promise<UserResponse> {
     if (await this.emailExist(createUserDto.email))
       throw new BadRequestException('User email has exist !');
-    const newUser: SUser = UserBuilder.with(createUserDto);
-    return this.userRepository.save(createUserDto).then(UserBuilder.from);
+    return UserBuilder.toSUser(createUserDto)
+      .then(this.userRepository.save)
+      .then(UserBuilder.toUserReponse);
   }
 
-  async friends(user: IUser) {
-    try {
-      const users = await this.userModel
-        .find({
-          _id: { $nin: [user._id] },
-          deleted: false,
-        })
-        .select('-password -createdAt');
-      return users;
-    } catch (error) {
-      return this.helpersService.responseError(
-        'cannot get all friend at user service',
-      );
-    }
-  }
+  // async friends(user: IUser) {
+  //   try {
+  //     const users = await this.userModel
+  //       .find({
+  //         _id: { $nin: [user._id] },
+  //         deleted: false,
+  //       })
+  //       .select('-password -createdAt');
+  //     return users;
+  //   } catch (error) {
+  //     return this.helpersService.responseError(
+  //       'cannot get all friend at user service',
+  //     );
+  //   }
+  // }
 
-  async findOne(id: string) {
-    try {
-      const user = await this.userModel
-        .findOne({
-          _id: id,
-          deleted: false,
-        })
-        .select('-token -password -createdAt');
-      return user;
-    } catch (error) {
-      return error;
-    }
-  }
+  // async findOne(id: string) {
+  //   try {
+  //     const user = await this.userModel
+  //       .findOne({
+  //         _id: id,
+  //         deleted: false,
+  //       })
+  //       .select('-token -password -createdAt');
+  //     return user;
+  //   } catch (error) {
+  //     return error;
+  //   }
+  // }
 
-  async findByEmail(email: string) {
-    const user = await this.userModel
-      .findOne({
-        email: email,
-        deleted: false,
-      })
-      .select('-createdAt');
-    return user;
-  }
+  // async findByEmail(email: string) {
+  //   const user = await this.userModel
+  //     .findOne({
+  //       email: email,
+  //       deleted: false,
+  //     })
+  //     .select('-createdAt');
+  //   return user;
+  // }
 
-  async update(id: string, updateUserDto: any) {
-    try {
-      // if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
-      if (await this.emailExist(updateUserDto.email, id)) {
-        updateUserDto.password = await this.helpersService.hashingPassword(
-          updateUserDto.password,
-        );
-        await this.userModel.updateOne(
-          { _id: id, deleted: false },
-          { $set: updateUserDto },
-        );
-        return this.helpersService.responeSuccess('Update success !');
-      } else return this.helpersService.responseError('User email has exist !');
-    } catch (error) {
-      return this.helpersService.responseError('Cannot update user !');
-    }
-  }
+  // async update(id: string, updateUserDto: any) {
+  //   try {
+  //     if (await this.emailExist(updateUserDto.email, id)) {
+  //       updateUserDto.password = await this.helpersService.hashingPassword(
+  //         updateUserDto.password,
+  //       );
+  //       await this.userModel.updateOne(
+  //         { _id: id, deleted: false },
+  //         { $set: updateUserDto },
+  //       );
+  //       return this.helpersService.responeSuccess('Update success !');
+  //     } else return this.helpersService.responseError('User email has exist !');
+  //   } catch (error) {
+  //     return this.helpersService.responseError('Cannot update user !');
+  //   }
+  // }
 
-  async remove(id: string) {
-    try {
-      // if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
-      await this.userModel.updateOne({ _id: id }, { $set: { deleted: true } });
-      return this.helpersService.responeSuccess('delete success');
-    } catch (error) {
-      return error;
-    }
-  }
+  // async remove(id: string) {
+  //   try {
+  //     // if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
+  //     await this.userModel.updateOne({ _id: id }, { $set: { deleted: true } });
+  //     return this.helpersService.responeSuccess('delete success');
+  //   } catch (error) {
+  //     return error;
+  //   }
+  // }
 }
