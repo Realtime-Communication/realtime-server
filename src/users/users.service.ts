@@ -4,40 +4,33 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { HelpersService } from 'src/helpers/helpers.service';
-import { User } from './schemas/user.schema';
 import { IUser } from './user.interface';
+import { UserRepository } from './users.repository';
+import { SUser } from './schemas/user.schema';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UserBuilder } from './user.builder';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectModel(User.name)
-    private readonly userModel: Model<User>,
+    @InjectModel(SUser.name)
+    private readonly userRepository: UserRepository,
     private readonly helpersService: HelpersService,
   ) {}
 
   async emailExist(email: string, id?: string): Promise<boolean> {
-    email = email.toLowerCase();
-    const user = await this.userModel.findOne({ email: email, deleted: false });
-    if (!user || id == user.id) return true;
-    else return false;
-    // try {
-
-    // } catch (error) {
-    //   console.log(error);
-    // }
-    // return false;
+    const user = await this.userRepository.findOne({
+      email: email.toLowerCase(),
+      deleted: false,
+    });
+    return user && id != user.id;
   }
 
-  async create(createUserDto: any) {
-    if (await this.emailExist(createUserDto.email)) {
-      createUserDto.email = createUserDto.email.toLowerCase();
-      createUserDto.password = await this.helpersService.hashingPassword(
-        createUserDto.password,
-      );
-      const createUser = new this.userModel(createUserDto);
-      await createUser.save();
-      return createUserDto;
-    } else throw new BadRequestException('User email has exist !');
+  async addUser(createUserDto: CreateUserDto) {
+    if (await this.emailExist(createUserDto.email))
+      throw new BadRequestException('User email has exist !');
+    const newUser: SUser = UserBuilder.with(createUserDto);
+    return this.userRepository.save(createUserDto).then(UserBuilder.from);
   }
 
   async friends(user: IUser) {

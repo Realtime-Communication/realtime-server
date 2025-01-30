@@ -1,11 +1,37 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { BaseSchema } from 'src/base/base.schema';
+import { Builder, createBuilderClass } from 'builder-pattern-2';
 
-export type UserDocument = HydratedDocument<User>;
+export type SUserDocument = HydratedDocument<SUser>;
+
+interface SUserCtor {
+  email: string;
+  password: string;
+  password_key: string;
+  username: string;
+  name: string;
+  about?: string;
+  birthday?: Date;
+  height?: number;
+  weight?: number;
+  phone?: number;
+  deleted?: boolean;
+  roles?: string[];
+  friends?: string[];
+  groups?: string[];
+  image?: string;
+  active?: boolean;
+}
 
 @Schema()
-export class User extends BaseSchema {
+export class SUser extends BaseSchema {
+  
+  constructor(partial: Partial<SUserCtor>) {
+    super();
+    Object.assign(this, partial);
+  }
+
   @Prop({ required: true })
   email: string;
 
@@ -16,7 +42,7 @@ export class User extends BaseSchema {
     required: true,
     select: false,
   })
-  password_key: string;
+  passwordKey: string;
 
   @Prop({ required: true, unique: true })
   username: string;
@@ -56,6 +82,8 @@ export class User extends BaseSchema {
 
   @Prop({ default: true })
   active: boolean;
+
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const SUserSchema = SchemaFactory.createForClass(SUser);
+export const SUserBuilder: Builder<SUser, SUserCtor> = createBuilderClass<SUser, SUserCtor>(SUser);
