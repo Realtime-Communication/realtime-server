@@ -1,36 +1,46 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { BaseSchema } from 'src/base/base.schema';
 
 export type UserDocument = HydratedDocument<User>;
 
-@Schema({ timestamps: true })
-export class User {
-  save() {
-    throw new Error('Method not implemented.');
-  }
+@Schema()
+export class User extends BaseSchema {
   @Prop({ required: true })
   email: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, select: false })
   password: string;
+
+  @Prop({
+    required: true,
+    select: false,
+  })
+  password_key: string;
+
+  @Prop({ required: true, unique: true })
+  username: string;
 
   @Prop({ required: true })
   name: string;
 
   @Prop()
-  address: string;
+  about: string;
+
+  @Prop()
+  birthday: Date;
+
+  @Prop()
+  height: number;
+
+  @Prop()
+  weight: number;
 
   @Prop()
   phone: number;
 
-  @Prop()
-  createdAt: Date
-
-  @Prop()
-  updatedAt?: Date
-
   @Prop({ default: false })
-  deleted: Boolean
+  deleted: boolean;
 
   @Prop()
   roles?: string[];
@@ -46,7 +56,6 @@ export class User {
 
   @Prop({ default: true })
   active: boolean;
-  
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
