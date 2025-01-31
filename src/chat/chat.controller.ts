@@ -12,7 +12,7 @@ export class ChatController {
   ){}
 
     @Get('/mychats')
-    async Chat(
+    async SMessage(
         @Request() req
     ) {
         return await this.chatService.getMyChats(req.user.userId);

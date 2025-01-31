@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 const bcrypt = require('bcryptjs');
 
-export class HelpersService {
-
+export class UtilService {
   private static readonly SALT_OR_ROUNDS: number = 10;
 
   static responeSuccess(message: string = '', response = {}) {
@@ -29,5 +28,4 @@ export class HelpersService {
   static decodePassword(inputPassword: string, userPassword: string) {
     return bcrypt.compareSync(inputPassword, userPassword);
   }
-
 }

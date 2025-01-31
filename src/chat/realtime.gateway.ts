@@ -10,7 +10,7 @@ import { Socket, Server } from 'socket.io';
 import { ChatService } from './realtime.service';
 import { Inject, UseGuards } from '@nestjs/common';
 import { WsGuard } from 'src/auth/ws-auth.guard';
-import { CacheManager } from './cacheManager.service';
+import { CacheManager } from './cache.service';
 
 @UseGuards(WsGuard)
 @WebSocketGateway({

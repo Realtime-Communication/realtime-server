@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { HelpersModule } from './helpers/helpers.module';
 import { ChatModule } from './chat/realtime.module';
 import { GroupsModule } from './groups/groups.module';
 import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
@@ -43,7 +42,6 @@ export const RedisOptions: CacheModuleAsyncOptions = {
     CacheModule.registerAsync(RedisOptions),
     UsersModule,
     AuthModule,
-    HelpersModule,
     ChatModule,
     GroupsModule,
   ],

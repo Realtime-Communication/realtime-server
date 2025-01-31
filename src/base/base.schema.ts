@@ -1,7 +1,12 @@
-import { Prop, SchemaFactory, Schema as NestSchema, Schema } from '@nestjs/mongoose';
+import {
+  Prop,
+  SchemaFactory,
+  Schema as NestSchema,
+  Schema,
+} from '@nestjs/mongoose';
 import { Binary, UUID } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Document } from 'mongoose';
 
 export type BaseDocument = HydratedDocument<BaseSchema>;
 
@@ -9,10 +14,14 @@ export type BaseDocument = HydratedDocument<BaseSchema>;
   timestamps: true,
   versionKey: false
 })
-export class BaseSchema {
+export class BaseSchema extends Document {
   @Prop({
     type: Buffer, // Store UUID as BSON Binary (Subtype 4)
-    default: () => new Binary(Buffer.from(uuidv4().replace(/-/g, ""), "hex"), UUID.SUBTYPE_UUID),
+    default: () =>
+      new Binary(
+        Buffer.from(uuidv4().replace(/-/g, ''), 'hex'),
+        UUID.SUBTYPE_UUID,
+      ),
     required: true,
   })
   _id: Binary; // BSON Binary UUID
@@ -22,6 +31,11 @@ export class BaseSchema {
 
   @Prop({ default: new Date() })
   updatedAt?: Date;
+
+  @Prop({
+    default: false,
+  })
+  deleted: boolean;
 }
 
 export const BaseSchemaModel = SchemaFactory.createForClass(BaseSchema);

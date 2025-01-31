@@ -8,26 +8,26 @@ import {
   Delete,
   Request,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
+import { UserService } from './users.service';
 import { Roles } from 'src/decorators/roles.decorator';
 import { Role } from 'src/roles/role.enum';
 import { Public } from 'src/decorators/public.decorator';
 import { IUser } from './user.interface';
 import { User } from 'src/decorators/user.decorator';
 import mongoose from 'mongoose';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UserResponse } from './user-data.response';
+import { CreateUserDto } from './request/create-user.dto';
+import { UserResponse } from './response/user-data.response';
 
 @Controller('users')
 export class UsersController {
   constructor(
-    private readonly usersService: UsersService
+    private readonly userService: UserService
   ) {}
 
   @Public()
-  @Post('/create')
+  @Post('/register')
   create(@Body() createUserDto: CreateUserDto): Promise<UserResponse> {
-    return this.usersService.addUser(createUserDto);
+    return this.userService.addUser(createUserDto);
   }
 
   @Get('/friends')

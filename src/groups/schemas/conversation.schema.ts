@@ -1,16 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 
 export type GroupDocument = HydratedDocument<Group>;
 
 @Schema({ timestamps: true })
 export class Group {
-
   @Prop()
-  name: string;
+  title: string;
 
-  @Prop()
-  leader: mongoose.Schema.Types.ObjectId;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'SUser', required: true })
+  creatorId: mongoose.Schema.Types.ObjectId;
 
   @Prop()
   createdAt: Date;

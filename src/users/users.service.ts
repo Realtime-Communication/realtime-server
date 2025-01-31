@@ -3,20 +3,18 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 // import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
-import { HelpersService } from 'src/helpers/helpers.service';
 import { IUser } from './user.interface';
 import { UserRepository } from './users.repository';
 import { SUser } from './schemas/user.schema';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto } from './request/create-user.dto';
 import { UserBuilder } from './user.builder';
-import { UserResponse } from './user-data.response';
+import { UserResponse } from './response/user-data.response';
 
 @Injectable()
-export class UsersService {
+export class UserService {
   constructor(
     @InjectModel(SUser.name)
     private readonly userRepository: UserRepository,
-    private readonly helpersService: HelpersService,
   ) {}
 
   async emailExist(email: string, id?: string): Promise<boolean> {
@@ -52,28 +50,19 @@ export class UsersService {
   // }
 
   // async findOne(id: string) {
-  //   try {
-  //     const user = await this.userModel
-  //       .findOne({
+  //     return this.userRepository
+  //       .findUserForValidate({
   //         _id: id,
   //         deleted: false,
   //       })
-  //       .select('-token -password -createdAt');
-  //     return user;
-  //   } catch (error) {
-  //     return error;
-  //   }
   // }
 
-  // async findByEmail(email: string) {
-  //   const user = await this.userModel
-  //     .findOne({
-  //       email: email,
-  //       deleted: false,
-  //     })
-  //     .select('-createdAt');
-  //   return user;
-  // }
+  async findByEmail(email: string): Promise<SUser> {
+    return this.userRepository.findOne({
+      email: email,
+      deleted: false,
+    });
+  }
 
   // async update(id: string, updateUserDto: any) {
   //   try {

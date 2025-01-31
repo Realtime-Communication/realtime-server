@@ -4,7 +4,8 @@ import { Inject, Injectable } from '@nestjs/common';
 @Injectable()
 export class CacheManager {
   constructor(
-    @Inject(CACHE_MANAGER) private cache: Cache
+    @Inject(CACHE_MANAGER) 
+    private readonly cache: Cache
   ){}
 
   // add socketId with userId in cache

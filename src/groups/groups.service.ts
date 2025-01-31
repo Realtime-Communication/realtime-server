@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Group } from './schemas/group.schema';
+import { Group } from './schemas/conversation.schema';
 import mongoose, { Model } from 'mongoose';
 import { IUser } from 'src/users/user.interface';
-import { HelpersService } from 'src/helpers/helpers.service';
+import { UtilService } from 'src/utils/common.util';
 import { ResponseMessage } from 'src/decorators/responseMessage.decorator';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class GroupsService {
   constructor(
     @InjectModel(Group.name)
     private readonly groupModel: Model<Group>,
-    private readonly helpersService: HelpersService
+    private readonly helpersService: UtilService
   ) {}
 
   async create(createGroupDto: CreateGroupDto, user: IUser) {

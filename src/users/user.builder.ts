@@ -1,14 +1,14 @@
-import { HelpersService } from 'src/helpers/helpers.service';
-import { CreateUserDto, CreateUserDtoBuilder } from './dto/create-user.dto';
+import { UtilService } from 'src/utils/common.util';
+import { CreateUserDto, CreateUserDtoBuilder } from './request/create-user.dto';
 import { SUser, SUserBuilder } from './schemas/user.schema';
 import { IUser } from './user.interface';
-import { UserResponse, UserResponseBuilder } from './user-data.response';
+import { UserResponse, UserResponseBuilder } from './response/user-data.response';
 
 export class UserBuilder {
   static async toSUser(userDto: CreateUserDto): Promise<SUser> {
     return new SUserBuilder()
       .setEmail(userDto.email)
-      .setPassword(await HelpersService.hashingPassword(userDto.password))
+      .setPassword(await UtilService.hashingPassword(userDto.password))
       .setPassword_key(userDto.passwordKey)
       .setUsername(userDto.username)
       .setName(userDto.name)

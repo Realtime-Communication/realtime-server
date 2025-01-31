@@ -6,7 +6,10 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
-  constructor(private authService: AuthService, private configService: ConfigService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService
+  ) {
     super();
   }
 

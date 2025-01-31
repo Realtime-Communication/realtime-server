@@ -22,7 +22,7 @@ import { UsersModule } from './users/users.module';
 import { ChatModule } from './chat/realtime.module';
 import { AllExceptionsFilter } from './exception/global.exception';
 
-export class CallChatApplication {
+class CallChatApplication {
   public static async bootstrap(args: string[]): Promise<void> {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
     const configService = app.get(ConfigService);
@@ -33,20 +33,22 @@ export class CallChatApplication {
     app.useWebSocketAdapter(redisIoAdapter);
 
     async () => {
-      redisClient.on('error', async (err) => await redisClient.connect());
+      redisClient.on('error', async () => await redisClient.connect());
+
       redisClient.on('disconnect', async () => {
         console.log('Disconnect');
         await redisClient.connect();
       });
+
       await redisClient.connect();
     };
 
+    // Swagger
     const config = new DocumentBuilder()
       .setTitle('Talk Together')
       .setDescription('API Description')
       .setVersion('1.0')
       .build();
-
     const options: SwaggerDocumentOptions = {
       deepScanRoutes: true,
       ignoreGlobalPrefix: true,
@@ -54,7 +56,6 @@ export class CallChatApplication {
         methodKey,
     };
     const document = SwaggerModule.createDocument(app, config, options);
-
     SwaggerModule.setup('api', app, document);
 
     app.enableCors();
@@ -82,4 +83,4 @@ export class CallChatApplication {
   }
 }
 
-CallChatApplication.bootstrap(null);
+CallChatApplication.bootstrap(['TOP 1 APPLICATION IN THE WORLD']);
