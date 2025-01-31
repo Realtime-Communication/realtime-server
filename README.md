@@ -1,10 +1,10 @@
 # Talk-Together Server
 Our server backend is built using NestJS, a progressive Node.js framework that leverages TypeScript, offering a modular architecture and strong typing for enhanced scalability and maintainability. The backend is integrated with MongoDB, providing a powerful and flexible NoSQL database solution to handle user data and chat history efficiently. For optimizing performance, we implement Redis for caching, ensuring quick data retrieval and reducing the load on the database. This setup supports real-time chat and call functionalities, delivering a smooth and responsive user experience. The combination of NestJS, MongoDB, and Redis ensures a robust and efficient backend capable of supporting high-concurrency, real-time interactions in our chat and call application.
+![image](https://github.com/user-attachments/assets/8cee48bf-8769-4b4d-a7ee-d9cae433ef52)
 
 ## Swagger: http://localhost:port/api
 
-## Env Property
-
+## env Property
 |PORT=
 |MONGODB_URL=
 |
