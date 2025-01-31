@@ -11,8 +11,8 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
-import redisClient from './redis/redis.client';
-import { RedisIoAdapter } from './redis/redis.adapter';
+import redisClient from './garbage/redis.client';
+import { RedisIoAdapter } from './garbage/redis.adapter';
 import {
   SwaggerModule,
   DocumentBuilder,
