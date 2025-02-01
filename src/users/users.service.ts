@@ -6,7 +6,7 @@ import mongoose, { Model } from 'mongoose';
 import { IUser } from './user.interface';
 import { UserRepository } from './users.repository';
 import { SUser } from './schemas/user.schema';
-import { CreateUserDto } from './request/create-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UserBuilder } from './user.builder';
 import { UserResponse } from './response/user-data.response';
 

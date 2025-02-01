@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { BaseSchema } from 'src/base/base.schema';
+import { BaseSchema } from 'src/common/base/base.schema';
 
 export type SConversationDocument = HydratedDocument<SConversation>;
 

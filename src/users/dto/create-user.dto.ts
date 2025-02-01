@@ -13,7 +13,7 @@ export interface CreateUserDtoCtor {
   birthday?: Date;
   height?: number;
   weight?: number;
-  phone?: number;
+  phone: string;
   deleted?: boolean;
   roles?: string[];
   friends?: string[];
@@ -23,6 +23,7 @@ export interface CreateUserDtoCtor {
 }
 
 export class CreateUserDto {
+  readonly id: Buffer;
   @IsLowercase()
   @ApiProperty()
   readonly email: string;
@@ -54,7 +55,7 @@ export class CreateUserDto {
 
   @IsNumber()
   @ApiProperty()
-  readonly phone?: number;
+  readonly phone: string;
 
   @ApiProperty()
   readonly deleted: boolean;

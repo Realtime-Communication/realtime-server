@@ -12,7 +12,7 @@ import {
 import { Public } from 'src/decorators/public.decorator';
 import { LocalAuthGuard } from './local-auth.guard';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from 'src/users/request/create-user.dto';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UserService } from 'src/users/users.service';
 
 @Controller('auth')

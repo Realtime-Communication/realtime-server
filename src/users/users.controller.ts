@@ -15,8 +15,10 @@ import { Public } from 'src/decorators/public.decorator';
 import { IUser } from './user.interface';
 import { User } from 'src/decorators/user.decorator';
 import mongoose from 'mongoose';
-import { CreateUserDto } from './request/create-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponse } from './response/user-data.response';
+import { UserEntity } from './user-data.response';
+import { ApiCreatedResponse } from '@nestjs/swagger';
 
 @Controller('users')
 export class UsersController {
@@ -26,7 +28,8 @@ export class UsersController {
 
   @Public()
   @Post('/register')
-  create(@Body() createUserDto: CreateUserDto): Promise<UserResponse> {
+  @ApiCreatedResponse({ type: UserEntity })
+  create(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
     return this.userService.addUser(createUserDto);
   }
 

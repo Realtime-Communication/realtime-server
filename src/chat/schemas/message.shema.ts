@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Binary } from 'mongodb';
 import { HydratedDocument, Schema as MongooseSchema  } from 'mongoose';
-import { BaseSchema } from 'src/base/base.schema';
+import { BaseSchema } from 'src/common/base/base.schema';
 import { SConversation } from './conversation.schema';
 import { SUser } from 'src/users/schemas/user.schema';
 
