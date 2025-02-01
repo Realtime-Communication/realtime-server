@@ -14,6 +14,8 @@ import { LocalAuthGuard } from './local-auth.guard';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UserService } from 'src/users/users.service';
+import { ApiCreatedResponse } from '@nestjs/swagger';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -25,13 +27,15 @@ export class AuthController {
   @Public()
   @Post('/login')
   @UseGuards(LocalAuthGuard)
-  async handleLogin(@Request() req) {
+  async login(@Request() req) {
     return this.authService.login(req.user._doc);
   }
 
   @Public()
   @Post('/register')
-  async handleRegister(@Body() createUserDto: CreateUserDto) {
-    return this.userService.addUser(createUserDto);
+  @ApiCreatedResponse({ type: UserEntity })
+  async register(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
+    return await this.userService.create(createUserDto)
+      .then((user) => new UserEntity(user));
   }
 }

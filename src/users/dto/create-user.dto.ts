@@ -1,80 +1,53 @@
 import { Role } from 'src/roles/role.enum';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsLowercase, IsNumber } from 'class-validator';
-import { Builder, createBuilderClass } from 'builder-pattern-2';
-
-export interface CreateUserDtoCtor {
-  email: string;
-  password: string;
-  passwordKey: string;
-  username: string;
-  name: string;
-  about?: string;
-  birthday?: Date;
-  height?: number;
-  weight?: number;
-  phone: string;
-  deleted?: boolean;
-  roles?: string[];
-  friends?: string[];
-  groups?: string[];
-  image?: string;
-  active?: boolean;
-}
+import { IsLowercase, IsNotEmpty, IsNumber, IsString, MinLength } from 'class-validator';
 
 export class CreateUserDto {
-  readonly id: Buffer;
-  @IsLowercase()
   @ApiProperty()
-  readonly email: string;
+  @IsNotEmpty()
+  @IsString()
+  phone: string;
 
   @ApiProperty()
-  readonly password: string;
+  @IsNotEmpty()
+  @IsString()
+  email: string;
 
   @ApiProperty()
-  readonly passwordKey: string;
-
-  @IsLowercase()
-  @ApiProperty()
-  readonly username: string;
-
-  @ApiProperty()
-  readonly name: string;
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(6)
+  password: string;
 
   @ApiProperty()
-  readonly about: string;
+  @IsNotEmpty()
+  @IsString()
+  first_name: string;
 
   @ApiProperty()
-  readonly birthday: Date;
+  @IsString()
+  middle_name: string;
 
   @ApiProperty()
-  readonly height: number;
+  @IsNotEmpty()
+  @IsString()
+  last_name: string;
 
   @ApiProperty()
-  readonly weight: number;
-
-  @IsNumber()
-  @ApiProperty()
-  readonly phone: string;
+  is_active: boolean;
 
   @ApiProperty()
-  readonly deleted: boolean;
+  is_reported: boolean;
 
   @ApiProperty()
-  readonly roles?: string[];
+  is_blocked: boolean;
 
   @ApiProperty()
-  readonly friends?: string[];
+  preferences: string;
 
   @ApiProperty()
-  readonly groups?: string[];
+  created_at: Date;
 
   @ApiProperty()
-  readonly image?: string;
-
-  @ApiProperty()
-  readonly active: boolean;
+  updated_at: Date;
 }
-
-export const CreateUserDtoBuilder: Builder<CreateUserDto, CreateUserDtoCtor> =
-  createBuilderClass<CreateUserDto, CreateUserDtoCtor>(CreateUserDto);

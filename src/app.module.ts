@@ -11,6 +11,7 @@ import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
+import { FriendsModule } from './friends/friends.module';
 
 export const RedisOptions: CacheModuleAsyncOptions = {
   isGlobal: true,
@@ -48,6 +49,7 @@ export const RedisOptions: CacheModuleAsyncOptions = {
     GroupsModule,
     PrismaModule,
     RedisModule,
+    FriendsModule,
   ],
   controllers: [AppController],
   providers: [

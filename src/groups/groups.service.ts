@@ -5,7 +5,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Group } from './schemas/conversation.schema';
 import mongoose, { Model } from 'mongoose';
 import { IUser } from 'src/users/user.interface';
-import { UtilService } from 'src/utils/common.util';
+import { UtilService } from 'src/utils/security.util';
 import { ResponseMessage } from 'src/decorators/responseMessage.decorator';
 
 @Injectable()

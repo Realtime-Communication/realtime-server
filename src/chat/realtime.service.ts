@@ -1,7 +1,7 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
-import { UtilService } from 'src/utils/common.util';
+import { UtilService } from 'src/utils/security.util';
 import { SMessage } from './schemas/message.shema';
 import { UsersService } from '../users/users.service';
 import { User } from 'src/users/schemas/user.schema';

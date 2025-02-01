@@ -1,236 +1,205 @@
 datasource db {
-  provider     = "postgresql"
-  url          = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  relationMode = "foreignKeys"
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id    String @id @default(uuid()) @db.Uuid
+model Users {
+  id            String    @id @default(uuid()) @db.Uuid
+  phone         String    @unique
+  email         String    @unique
 
-  phone String @unique
-  email String @unique
+  password      String
+  first_name    String    @default("")
+  middle_name   String?   @default("")
+  last_name     String    @default("")
+  is_active     Boolean   @default(false)
+  is_reported   Boolean   @default(false)
+  is_blocked    Boolean   @default(false)
+  preferences   String?   @default("")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  password    String
-  first_name  String   @default("")
-  middle_name String?  @default("")
-  last_name   String   @default("")
-  is_active   Boolean  @default(false)
-  is_reported Boolean  @default(false)
-  is_blocked  Boolean  @default(false)
-  preferences String?  @default("")
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  Device              Device[]
-  Message             Message[]
-  Participant         Participant[]
-  Report              Report[]
-  DeletedMessage      DeletedMessage[]
-  DeletedConversation DeletedConversation[]
-  Access              Access[]
-  UserContact         UserContact[]         @relation("UserContacts")
-  Contact             UserContact[]         @relation("ContactRelation")
-  BlockList           BlockList[]
-  UserVerification    UserVerification?
-  Story               Story[]
-  
-  friendsRequested    Friend[]              @relation("UserRequester")
-  friendsReceived     Friend[]              @relation("UserReceiver")
+  Devices       Devices[]
+  Messages      Messages[]
+  Participants  Participants[]
+  Reports       Reports[]
+  DeletedMessages DeletedMessages[]
+  DeletedConversations DeletedConversations[]
+  Access        Access[]
+  UserContacts  UserContacts[] @relation("UserContacts")
+  Contacts      UserContacts[] @relation("ContactRelation")
+  BlockList     BlockList[]
+  UserVerification UserVerification?
 }
 
-model Device {
-  id           String     @id @default(uuid()) @db.Uuid
-  user_id      String     @db.Uuid
+model Devices {
+  id           String    @id @default(uuid()) @db.Uuid
+  users_id     String    @db.Uuid
   device_id    String
   device_token String
   type         DeviceType
-  created_at   DateTime   @default(now())
-  updated_at   DateTime   @updatedAt
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
-  User   User     @relation(fields: [user_id], references: [id])
-  Access Access[]
+  Users        Users     @relation(fields: [users_id], references: [id])
+  Access       Access[]
 }
 
 model Access {
   id         String    @id @default(uuid()) @db.Uuid
-  user_id    String    @db.Uuid
-  device_id  String    @db.Uuid
+  users_id   String    @db.Uuid
+  devices_id String    @db.Uuid
   token      String
   created_at DateTime  @default(now())
   deleted_at DateTime?
 
-  User   User   @relation(fields: [user_id], references: [id])
-  Device Device @relation(fields: [device_id], references: [id])
+  Users      Users     @relation(fields: [users_id], references: [id])
+  Devices    Devices   @relation(fields: [devices_id], references: [id])
 }
 
 model UserVerification {
-  user_id           String   @id @default(uuid()) @db.Uuid
+  users_id         String    @id @default(uuid()) @db.Uuid
   verification_code String
-  created_at        DateTime
+  created_at       DateTime
 
-  User User @relation(fields: [user_id], references: [id])
+  Users            Users    @relation(fields: [users_id], references: [id])
 }
 
-model UserContact {
-  id         String   @id @default(uuid()) @db.Uuid
-  user_id    String   @db.Uuid
-  contact_id String   @db.Uuid
-  first_name String   @default("")
-  last_name  String   @default("")
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+model UserContacts {
+  id         String    @id @default(uuid()) @db.Uuid
+  user_id    String    @db.Uuid
+  contact_id String    @db.Uuid
+  first_name String    @default("")
+  last_name  String    @default("")
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
 
-  User    User @relation("UserContacts", fields: [user_id], references: [id])
-  Contact User @relation("ContactRelation", fields: [contact_id], references: [id])
+  Users      Users     @relation("UserContacts", fields: [user_id], references: [id])
+  Contact    Users     @relation("ContactRelation", fields: [contact_id], references: [id])
 
   @@unique([user_id, contact_id])
 }
 
-model Contact {
-  id          String   @id @default(uuid()) @db.Uuid
-  first_name  String   @default("")
-  middle_name String?  @default("")
-  last_name   String   @default("")
+model Contacts {
+  id          String    @id @default(uuid()) @db.Uuid
+  first_name  String    @default("")
+  middle_name String?   @default("")
+  last_name   String    @default("")
   phone       String
   email       String
-  created_at  DateTime @default(now())
+  created_at  DateTime  @default(now())
 }
 
 model BlockList {
-  id             String   @id @default(uuid()) @db.Uuid
-  user_id        String   @db.Uuid
-  participant_id String   @db.Uuid
-  created_at     DateTime @default(now())
+  id              String    @id @default(uuid()) @db.Uuid
+  users_id        String    @db.Uuid
+  participants_id String    @db.Uuid
+  created_at      DateTime  @default(now())
 
-  User User @relation(fields: [user_id], references: [id])
+  Users          Users     @relation(fields: [users_id], references: [id])
 }
 
 model Conversation {
-  id         String    @id @default(uuid()) @db.Uuid
-  title      String
-  creator_id String    @db.Uuid
-  channel_id String    @db.Uuid
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  deleted_at DateTime?
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  creator_id  String    @db.Uuid
+  channel_id  String    @db.Uuid
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 
-  Message             Message[]
-  Participant         Participant[]
-  DeletedConversation DeletedConversation[]
+  Messages             Messages[]
+  Participants        Participants[]
+  DeletedConversations DeletedConversations[]
 }
 
-model Participant {
-  id              String          @id @default(uuid()) @db.Uuid
-  conversation_id String          @db.Uuid
-  user_id         String          @db.Uuid
-  type            ParticipantType
-  created_at      DateTime        @default(now())
-  updated_at      DateTime        @updatedAt
+model Participants {
+  id             String    @id @default(uuid()) @db.Uuid
+  conversation_id String    @db.Uuid
+  users_id       String    @db.Uuid
+  type           ParticipantType
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
-  User         User         @relation(fields: [user_id], references: [id])
-  Conversation Conversation @relation(fields: [conversation_id], references: [id])
+  Users          Users    @relation(fields: [users_id], references: [id])
+  Conversation   Conversation @relation(fields: [conversation_id], references: [id])
 
-  @@unique([conversation_id, user_id])
+  @@unique([conversation_id, users_id])
 }
 
-model Message {
-  id              String      @id @default(uuid()) @db.Uuid
-  guid            String
-  conversation_id String      @db.Uuid
-  sender_id       String      @db.Uuid
-  message_type    MessageType
-  message         String      @default("")
-  created_at      DateTime    @default(now())
-  deleted_at      DateTime?
+model Messages {
+  id             String    @id @default(uuid()) @db.Uuid
+  guid           String
+  conversation_id String    @db.Uuid
+  sender_id      String    @db.Uuid
+  message_type   MessageType
+  message        String    @default("")
+  created_at     DateTime  @default(now())
+  deleted_at     DateTime?
 
-  Conversation   Conversation     @relation(fields: [conversation_id], references: [id])
-  User           User             @relation(fields: [sender_id], references: [id])
-  Attachment     Attachment[]
-  DeletedMessage DeletedMessage[]
+  Conversation   Conversation @relation(fields: [conversation_id], references: [id])
+  Users          Users    @relation(fields: [sender_id], references: [id])
+  Attachments    Attachments[]
+  DeletedMessages DeletedMessages[]
 }
 
-model Attachment {
-  id         String   @id @default(uuid()) @db.Uuid
-  message_id String   @db.Uuid
-  thumb_url  String
-  file_url   String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+model Attachments {
+  id          String    @id @default(uuid()) @db.Uuid
+  messages_id String    @db.Uuid
+  thumb_url   String
+  file_url    String
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
-  Message Message @relation(fields: [message_id], references: [id])
+  Messages    Messages  @relation(fields: [messages_id], references: [id])
 }
 
-model DeletedMessage {
-  id         String   @id @default(uuid()) @db.Uuid
-  message_id String   @db.Uuid
-  user_id    String   @db.Uuid
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+model DeletedMessages {
+  id          String    @id @default(uuid()) @db.Uuid
+  messages_id String    @db.Uuid
+  users_id    String    @db.Uuid
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
-  Message Message @relation(fields: [message_id], references: [id])
-  User    User    @relation(fields: [user_id], references: [id])
+  Messages    Messages  @relation(fields: [messages_id], references: [id])
+  Users       Users    @relation(fields: [users_id], references: [id])
 }
 
-model DeletedConversation {
-  id              String   @id @default(uuid()) @db.Uuid
-  conversation_id String   @db.Uuid
-  user_id         String   @db.Uuid
-  created_at      DateTime @default(now())
+model DeletedConversations {
+  id             String    @id @default(uuid()) @db.Uuid
+  conversation_id String    @db.Uuid
+  users_id       String    @db.Uuid
+  created_at     DateTime  @default(now())
 
-  Conversation Conversation @relation(fields: [conversation_id], references: [id])
-  User         User         @relation(fields: [user_id], references: [id])
+  Conversation   Conversation @relation(fields: [conversation_id], references: [id])
+  Users          Users    @relation(fields: [users_id], references: [id])
 }
 
-model Report {
-  id             String       @id @default(uuid()) @db.Uuid
-  user_id        String       @db.Uuid
-  participant_id String       @db.Uuid
-  report_type    String
-  notes          String?
-  status         ReportStatus @default(PENDING)
-  created_at     DateTime     @default(now())
+model Reports {
+  id              String    @id @default(uuid()) @db.Uuid
+  users_id        String    @db.Uuid
+  participants_id String    @db.Uuid
+  report_type     String
+  notes           String?
+  status          ReportStatus @default(PENDING)
+  created_at      DateTime  @default(now())
 
-  User User @relation(fields: [user_id], references: [id])
+  Users          Users     @relation(fields: [users_id], references: [id])
 }
 
-model Activity {
-  id            String   @id @default(uuid()) @db.Uuid
+model Activities {
+  id            String    @id @default(uuid()) @db.Uuid
   activity_type String
-  activity_id   String   @db.Uuid
+  activity_id   String    @db.Uuid
   title         String
   detail        String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-}
-
-model Friend {
-  id           String  @id @default(uuid()) @db.Uuid
-  requester_id String  @db.Uuid
-  receiver_id  String  @db.Uuid
-  status       String  @default("PENDING") // PENDING, ACCEPTED, REJECTED
-
-  requester User @relation("UserRequester", fields: [requester_id], references: [id])
-  receiver  User @relation("UserReceiver", fields: [receiver_id], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@unique([requester_id, receiver_id])
-}
-
-
-model Story {
-  id         String   @id @default(uuid()) @db.Uuid
-  user_id    String   @db.Uuid
-  content    String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  expires_at DateTime
-
-  User User @relation(fields: [user_id], references: [id])
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 }
 
 enum MessageType {

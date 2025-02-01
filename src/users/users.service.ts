@@ -1,93 +1,48 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-// import { CreateUserDto } from './dto/create-user.dto';
-// import { UpdateUserDto } from './dto/update-user.dto';
-import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
-import { IUser } from './user.interface';
-import { UserRepository } from './users.repository';
-import { SUser } from './schemas/user.schema';
+import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UserBuilder } from './user.builder';
-import { UserResponse } from './response/user-data.response';
+import { UserEntity } from './entities/user.entity';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
-  constructor(
-    @InjectModel(SUser.name)
-    private readonly userRepository: UserRepository,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   async emailExist(email: string, id?: string): Promise<boolean> {
-    const user = await this.userRepository.findOne({
-      email: email.toLowerCase(),
-      deleted: false,
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        email: email.toLowerCase(),
+      },
     });
     return user && id != user.id;
   }
 
-  async addUser(createUserDto: CreateUserDto): Promise<UserResponse> {
+  async create(createUserDto: CreateUserDto): Promise<UserEntity> {
     if (await this.emailExist(createUserDto.email))
       throw new BadRequestException('User email has exist !');
-    return UserBuilder.toSUser(createUserDto)
-      .then(this.userRepository.save)
-      .then(UserBuilder.toUserReponse);
+    return this.prismaService.user.create({ data: createUserDto });
   }
 
-  // async friends(user: IUser) {
-  //   try {
-  //     const users = await this.userModel
-  //       .find({
-  //         _id: { $nin: [user._id] },
-  //         deleted: false,
-  //       })
-  //       .select('-password -createdAt');
-  //     return users;
-  //   } catch (error) {
-  //     return this.helpersService.responseError(
-  //       'cannot get all friend at user service',
-  //     );
-  //   }
-  // }
+  async findOne(id: string): Promise<UserEntity> {
+    return await this.prismaService.user.findUnique({ where: { id } });
+  }
 
-  // async findOne(id: string) {
-  //     return this.userRepository
-  //       .findUserForValidate({
-  //         _id: id,
-  //         deleted: false,
-  //       })
-  // }
+  async findByEmail(email: string): Promise<UserEntity> {
+    return await this.prismaService.user.findUnique({ where: { email: email } });
+  }
 
-  async findByEmail(email: string): Promise<SUser> {
-    return this.userRepository.findOne({
-      email: email,
-      deleted: false,
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
+    const user = await this.prismaService.user.update({
+      where: { id },
+      data: updateUserDto,
     });
+    return new UserEntity(user);
   }
 
-  // async update(id: string, updateUserDto: any) {
-  //   try {
-  //     if (await this.emailExist(updateUserDto.email, id)) {
-  //       updateUserDto.password = await this.helpersService.hashingPassword(
-  //         updateUserDto.password,
-  //       );
-  //       await this.userModel.updateOne(
-  //         { _id: id, deleted: false },
-  //         { $set: updateUserDto },
-  //       );
-  //       return this.helpersService.responeSuccess('Update success !');
-  //     } else return this.helpersService.responseError('User email has exist !');
-  //   } catch (error) {
-  //     return this.helpersService.responseError('Cannot update user !');
-  //   }
-  // }
-
-  // async remove(id: string) {
-  //   try {
-  //     // if(!mongoose.Types.ObjectId.isValid(id)) return this.helpersService.responseError("User not exist on system");
-  //     await this.userModel.updateOne({ _id: id }, { $set: { deleted: true } });
-  //     return this.helpersService.responeSuccess('delete success');
-  //   } catch (error) {
-  //     return error;
-  //   }
-  // }
+  async remove(id: string): Promise<UserEntity> {
+    const user = await this.prismaService.user.delete({
+      where: { id },
+    });
+    return new UserEntity(user);
+  }
 }

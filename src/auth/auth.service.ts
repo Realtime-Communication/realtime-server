@@ -3,24 +3,25 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UtilService } from '../utils/common.util';
 import { JwtService } from '@nestjs/jwt';
 import { IUser } from 'src/users/user.interface';
-import { UserRepository } from 'src/users/users.repository';
-import { SUser } from 'src/users/schemas/user.schema';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { PrismaService } from 'src/common/prisma/prisma.service';
+import { UserService } from 'src/users/users.service';
+import { SecutiryUtils } from 'src/utils/security.util';
 
 @Injectable()
 export class AuthService {
-
   constructor(
     private readonly jwtService: JwtService,
-    private readonly userRepository: UserRepository
+    private readonly userService: UserService,
   ) {}
 
   async validateUser(email: string, nonHashPassword: string): Promise<any> {
-    const user: SUser = await this.userRepository.findByEmail(email);
+    const user: UserEntity = await this.userService.findByEmail(email);
     if (!user) throw new NotFoundException('User not found');
-    if (!(await UtilService.decodePassword(nonHashPassword, user.password))) throw new UnauthorizedException('Password is incorrect');
+    if (!(await SecutiryUtils.decodePassword(nonHashPassword, user.password)))
+      throw new UnauthorizedException('Password is incorrect');
     const { password, ...result } = user;
     return result;
   }
@@ -31,5 +32,4 @@ export class AuthService {
       access_token: this.jwtService.sign(payload),
     };
   }
-
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 const bcrypt = require('bcryptjs');
 
-export class UtilService {
+export class SecutiryUtils {
   private static readonly SALT_OR_ROUNDS: number = 10;
 
   static responeSuccess(message: string = '', response = {}) {
