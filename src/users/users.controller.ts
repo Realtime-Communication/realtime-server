@@ -1,7 +1,5 @@
 import { Controller, Get, Body, Patch, Param, Delete, Post, ParseIntPipe } from '@nestjs/common';
 import { UserService } from './users.service';
-import { IUser } from './user.interface';
-import { User } from 'src/decorators/user.decorator';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';

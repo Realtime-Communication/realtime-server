@@ -1,7 +1,7 @@
 import { Controller, Delete, Get, Injectable, Param, Post, Query, Render, Req, Request, Res, UseGuards } from '@nestjs/common';
 import { ChatService } from './realtime.service';
 import { IUser } from 'src/users/user.interface';
-import { User } from 'src/decorators/user.decorator';
+import { User } from 'src/decorators/account-request.decorator';
 import mongoose from 'mongoose';
 
 @Injectable()

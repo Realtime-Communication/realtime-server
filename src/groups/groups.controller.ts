@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { GroupsService } from './groups.service';
-import { CreateGroupDto } from './dto/create-group.dto';
-import { UpdateGroupDto } from './dto/update-group.dto';
-import { User } from 'src/decorators/user.decorator';
+import { CreateGroupDto } from './dto/create-conversation.dto';
+import { UpdateGroupDto } from './dto/update-conversation.dto';
+import { AccountRequest, TAccountRequest, User } from 'src/decorators/account-request.decorator';
 import { IUser } from 'src/users/user.interface';
 import mongoose from 'mongoose';
 
@@ -13,8 +13,8 @@ export class GroupsController {
   ) {}
 
   @Post('/create')
-  create(@Body() createGroupDto: CreateGroupDto, @User() user: IUser) {
-    return this.groupsService.create(createGroupDto, user);
+  create(@Body() createGroupDto: CreateGroupDto, @AccountRequest() account: TAccountRequest) {
+    return this.groupsService.create(createGroupDto, account);
   }
 
   @Get('/mygroups')

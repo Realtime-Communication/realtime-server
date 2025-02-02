@@ -7,7 +7,7 @@ import { UsersService } from '../users/users.service';
 import { User } from 'src/users/schemas/user.schema';
 import { IUser } from 'src/users/user.interface';
 import { GroupsService } from './../groups/groups.service';
-import { ResponseMessage } from 'src/decorators/responseMessage.decorator';
+import { ResponseMessage } from 'src/decorators/response-message.decorator';
 
 @Injectable()
 export class ChatService {

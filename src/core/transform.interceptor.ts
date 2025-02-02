@@ -9,7 +9,7 @@ import { map } from 'rxjs/operators';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
-import { RESPONSE_MESSAGE } from 'src/decorators/responseMessage.decorator';
+import { RESPONSE_MESSAGE } from 'src/decorators/response-message.decorator';
 
 export interface Response<T> {
   message?: string;

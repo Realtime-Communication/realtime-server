@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { GroupsController } from './groups.controller';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Group, GroupSchema } from './schemas/conversation.schema';
+import { Group, GroupSchema } from './entity/conversation.entity';
 import { HelpersModule } from 'src/helpers/helpers.module';
 
 @Module({

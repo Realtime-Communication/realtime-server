@@ -1,46 +1,60 @@
 import { Injectable } from '@nestjs/common';
-import { CreateGroupDto } from './dto/create-group.dto';
-import { UpdateGroupDto } from './dto/update-group.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Group } from './schemas/conversation.schema';
 import mongoose, { Model } from 'mongoose';
-import { IUser } from 'src/users/user.interface';
-import { UtilService } from 'src/utils/security.util';
-import { ResponseMessage } from 'src/decorators/responseMessage.decorator';
+import { ResponseMessage } from 'src/decorators/response-message.decorator';
+import { PrismaService } from 'src/common/prisma/prisma.service';
+import { TAccountRequest } from 'src/decorators/account-request.decorator';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { Conversation, ParticipantType } from '@prisma/client';
+import { ConversationEntity } from './entity/conversation.entity';
 
 @Injectable()
-export class GroupsService {
-  constructor(
-    @InjectModel(Group.name)
-    private readonly groupModel: Model<Group>,
-    private readonly helpersService: UtilService
-  ) {}
+export class ConversationService {
+  constructor(private readonly prismaService: PrismaService) {}
 
-  async create(createGroupDto: CreateGroupDto, user: IUser) {
-    try {
-      createGroupDto.leader = user._id;
-      createGroupDto.members = [...[user._id]];
-      return await this.groupModel.create(createGroupDto);
-    } catch (error) {
-      return this.helpersService.responseError('Cannot create new group');
-    }
+  async createConversation(
+    createConversationDto: CreateConversationDto,
+    account: TAccountRequest,
+  ): Promise<ConversationEntity> {
+    validateCreateConversationRequest(createConversationDto, account);
+    return await this.prismaService.conversation.create({
+      data: {
+        ...createConversationDto,
+        participants: {
+          create: {
+            type: ParticipantType.member,
+            user_id: account.id,
+          },
+        },
+      },
+      include: {
+        participants: true,
+      },
+    });
   }
 
   @ResponseMessage('Get all my groups')
-  async myGroups(user: IUser) {
-    try {
-      return await this.groupModel.find({ members: { $elemMatch: { $eq: user._id } } });
-    } catch (error) {
-      return error;
-    }
+  async getGroupds(account: TAccountRequest): Promise<ConversationEntity> {
+    return await this.prismaService.conversation.findMany({
+      where: {
+        participants: {
+          some: {
+            user_id: account.id,
+          },
+        },
+      },
+      include: {
+        participants: true,
+      },
+    });
   }
 
   async findOne(id: string) {
     try {
       return await this.groupModel.findOne({
         _id: id,
-        deleted: false
-      })
+        deleted: false,
+      });
     } catch (error) {
       return error;
     }
@@ -57,12 +71,25 @@ export class GroupsService {
   @ResponseMessage('Get all ids my groups')
   async idsMyGroups(user: IUser) {
     try {
-      return await this.groupModel.find({
-        members: {$in: user._id},
-        deleted: false
-      }).select('_id')
+      return await this.groupModel
+        .find({
+          members: { $in: user._id },
+          deleted: false,
+        })
+        .select('_id');
     } catch (error) {
       return error;
     }
+  }
+}
+function validateCreateConversationRequest(
+  createConversationDto: CreateConversationDto,
+  account: TAccountRequest,
+) {
+  if (!createConversationDto.title) {
+    throw new Error('Conversation title is required');
+  }
+  if (!account || createConversationDto.creator_id != account.id) {
+    throw new Error('Valid account is required');
   }
 }
