@@ -1,4 +1,4 @@
-import { MessageType } from '@prisma/client';
+import { CallStatus, CallType, MessageStatus, MessageType } from '@prisma/client';
 
 export class MessageVm {
   id: number;
@@ -6,13 +6,23 @@ export class MessageVm {
   conversation_id: number;
   sender_id: number;
   message_type: MessageType;
-  message: string;
+  content: string;
   created_at: Date;
-  attachments?: AttachmentVm[];
-}
+  deleted_at?: Date;
+  call_type: CallType;
+  callStatus: CallStatus;
+  status: MessageStatus;
 
-export class AttachmentVm {
-  id: number;
-  thumb_url: string;
-  file_url: string;
+  user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+
+  attachments?: {
+    id: number;
+    thumb_url: string;
+    file_url: string;
+  }[];
 }

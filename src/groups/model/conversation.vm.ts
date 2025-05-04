@@ -12,11 +12,4 @@ export class ConversationVm {
     user_id: number;
     type: 'lead' | 'member';
   }[];
-
-  messages?: {
-    id: number;
-    message: string;
-    sender_id: number;
-    created_at: Date;
-  }[];
 }

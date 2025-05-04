@@ -5,16 +5,17 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { MessageType } from '@prisma/client';
+import {
+  CallStatus,
+  CallType,
+  MessageStatus,
+  MessageType,
+} from '@prisma/client';
 
 export class CreateMessageDto {
   @IsInt()
   @IsNotEmpty()
   conversation_id: number;
-
-  @IsInt()
-  @IsNotEmpty()
-  sender_id: number;
 
   @IsEnum(MessageType)
   @IsNotEmpty()
@@ -22,7 +23,21 @@ export class CreateMessageDto {
 
   @IsString()
   @IsOptional()
-  message?: string;
+  content?: string;
+
+  @IsEnum(CallType)
+  @IsOptional()
+  call_type?: CallType;
+
+  @IsEnum(CallStatus)
+  @IsOptional()
+  callStatus?: CallStatus;
+
+  @IsEnum(MessageStatus)
+  @IsOptional()
+  status?: MessageStatus = 'sent';
+
+  timestamp: Date;
 
   @IsOptional()
   attachments?: {

@@ -11,6 +11,7 @@ import { ChatService } from './message.service';
 import { Inject, UseGuards } from '@nestjs/common';
 import { WsGuard } from 'src/auth/ws-auth.guard';
 import { CacheManager } from './cache.service';
+import { CreateMessageDto } from './dto/create-message.dto';
 
 @UseGuards(WsGuard)
 @WebSocketGateway({
@@ -31,9 +32,9 @@ export class ChatGateway
   private server: Server;
   private wsClients = new Map<string, string>();
 
-  @UseGuards(WsGuard)
+  // @UseGuards(WsGuard)
   @SubscribeMessage('sendMessage')
-  async messageInGoing(client: any, data: any) {
+  async messageInGoing(client: any, data: CreateMessageDto) {
     const date = new Date();
     data.msgTime = date.toLocaleString();
     const _id = await this.chatService.saveMessage(data); // to delete message

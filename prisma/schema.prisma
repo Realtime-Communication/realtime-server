@@ -115,7 +115,7 @@ model Conversation {
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
-  avatar_url String 
+  avatar_url String
 
   messages              Message[]
   participants          Participant[]
@@ -137,14 +137,17 @@ model Participant {
 }
 
 model Message {
-  id              Int         @id @default(autoincrement())
-  guid            String
+  id              Int           @id @default(autoincrement())
+  guid            String        @default(uuid())
   conversation_id Int
   sender_id       Int
   message_type    MessageType
-  message         String      @default("")
-  created_at      DateTime    @default(now())
+  content         String        @default("")
+  created_at      DateTime      @default(now())
   deleted_at      DateTime?
+  call_type       CallType
+  callStatus      CallStatus
+  status          MessageStatus
 
   conversation     Conversation     @relation(fields: [conversation_id], references: [id])
   user             User             @relation(fields: [sender_id], references: [id])
@@ -234,8 +237,27 @@ model Story {
 enum MessageType {
   text
   image
-  vedio
-  audio
+  file
+  video
+  call
+}
+
+enum CallStatus {
+  INVITED
+  MISSED
+  ONGOING
+  ENDED
+}
+
+enum CallType {
+  voice
+  video
+}
+
+enum MessageStatus {
+  sent
+  delivered
+  read
 }
 
 enum ParticipantType {

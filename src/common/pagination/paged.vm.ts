@@ -1,14 +1,3 @@
-import { Type } from 'class-transformer';
-
-import {
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsPositive,
-  IsString,
-  Min,
-} from 'class-validator';
-
 export class PagedResponse<T> {
   page: number;
   size: number;

@@ -23,6 +23,7 @@ export class ConversationService {
     return await this.prismaService.conversation.create({
       data: {
         ...createConversationDto,
+        avatar_url: null, // NULL DEFAULT
         participants: {
           create: {
             type: ParticipantType.member,
@@ -71,7 +72,14 @@ export class ConversationService {
               email: true,
             },
           },
-          attachments: true,
+          attachments: {
+            select: {
+              id: true,
+              thumb_url: true,
+              file_url: true,
+              created_at: true,
+            },
+          },
         },
       }),
       this.prismaService.message.count({
@@ -89,6 +97,22 @@ export class ConversationService {
       }),
     ]);
 
+    const mappedMessages = messages.map((message) => ({
+      id: message.id,
+      guid: message.guid,
+      conversation_id: message.conversation_id,
+      sender_id: message.sender_id,
+      message_type: message.message_type,
+      content: message.content,
+      created_at: message.created_at,
+      deleted_at: message.deleted_at,
+      call_type: message.call_type,
+      callStatus: message.callStatus,
+      status: message.status,
+      user: message.user,
+      attachments: message.attachments,
+    }));
+
     const totalPages = Math.ceil(total / query.limit);
     const nextCursor =
       messages.length > 0
@@ -97,7 +121,7 @@ export class ConversationService {
 
     return {
       page: query.page,
-      result: messages,
+      result: mappedMessages,
       size: query.limit,
       totalPage: totalPages,
       totalElement: total,
