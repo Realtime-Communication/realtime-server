@@ -1,7 +1,5 @@
-import { User } from '@prisma/client';
-
-export class UserEntity implements User {
-  id: string;
+export class UserVm {
+  id: number;
   phone: string;
   email: string;
   password: string;

@@ -6,7 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/realtime.module';
-import { GroupsModule } from './groups/groups.module';
+import { GroupsModule } from './conversations/conversations.module';
 import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { PrismaModule } from './common/prisma/prisma.module';

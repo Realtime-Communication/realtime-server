@@ -32,7 +32,9 @@ export class PrismaRepository<
     return await (this.prisma[this.model].findFirst as any)(...args);
   }
 
-  async findFirstOrThrow(...args: Parameters<PrismaClient[K]['findFirstOrThrow']>) {
+  async findFirstOrThrow(
+    ...args: Parameters<PrismaClient[K]['findFirstOrThrow']>
+  ) {
     return await (this.prisma[this.model].findFirstOrThrow as any)(...args);
   }
 
@@ -44,7 +46,9 @@ export class PrismaRepository<
     return await (this.prisma[this.model].findUnique as any)(...args);
   }
 
-  async findUniqueOrThrow(...args: Parameters<PrismaClient[K]['findUniqueOrThrow']>) {
+  async findUniqueOrThrow(
+    ...args: Parameters<PrismaClient[K]['findUniqueOrThrow']>
+  ) {
     return await (this.prisma[this.model].findUniqueOrThrow as any)(...args);
   }
 

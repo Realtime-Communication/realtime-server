@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ChatGateway } from './realtime.gateway';
-import { ChatController } from './chat.controller';
-import { ChatService } from './realtime.service';
+import { MessageController } from './message.controller';
+import { ChatService } from './message.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SMessage, SMessageSchema } from './schemas/message.shema';
 import { UsersModule } from 'src/users/users.module';
-import { GroupsModule } from 'src/groups/groups.module';
-import { GroupsService } from 'src/groups/groups.service';
+import { GroupsModule } from 'src/conversations/conversations.module';
+import { GroupsService } from 'src/conversations/conversations.service';
 import { CacheManager } from './cache.service';
 
 @Module({
@@ -17,6 +17,6 @@ import { CacheManager } from './cache.service';
     GroupsModule,
   ],
   providers: [ChatGateway, ChatService, CacheManager],
-  controllers: [ChatController],
+  controllers: [MessageController],
 })
 export class ChatModule {}

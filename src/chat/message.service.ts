@@ -1,12 +1,6 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
-import { UtilService } from 'src/utils/security.util';
-import { SMessage } from './schemas/message.shema';
-import { UsersService } from '../users/users.service';
-import { User } from 'src/users/schemas/user.schema';
-import { IUser } from 'src/users/user.interface';
-import { GroupsService } from './../groups/groups.service';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
 
 @Injectable()
@@ -58,8 +52,8 @@ export class ChatService {
   async conversations(user: IUser) {
     try {
       const friends = await this.usersService.friends(user);
-      const groups = await this.groupsService.myGroups(user);
-      const result = [...[friends], ...[groups]];
+      const conversations = await this.groupsService.myGroups(user);
+      const result = [...[friends], ...[conversations]];
       return result;
     } catch (error) {
       return this.helpersService.responseError(

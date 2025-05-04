@@ -11,8 +11,9 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
-import redisClient from './garbage/redis.client';
-import { RedisIoAdapter } from './garbage/redis.adapter';
+// import redisClient from './garbage/redis.client';
+// import { RedisIoAdapter } from './garbage/redis.adapter';
+
 import {
   SwaggerModule,
   DocumentBuilder,
@@ -28,20 +29,17 @@ class CallChatApplication {
     const configService = app.get(ConfigService);
 
     // Redis Caching Websocket
-    const redisIoAdapter = new RedisIoAdapter(app);
-    await redisIoAdapter.connectToRedis();
-    app.useWebSocketAdapter(redisIoAdapter);
-
-    async () => {
-      redisClient.on('error', async () => await redisClient.connect());
-
-      redisClient.on('disconnect', async () => {
-        console.log('Disconnect');
-        await redisClient.connect();
-      });
-
-      await redisClient.connect();
-    };
+    // const redisIoAdapter = new RedisIoAdapter(app);
+    // await redisIoAdapter.connectToRedis();
+    // app.useWebSocketAdapter(redisIoAdapter);
+    // async () => {
+    //   redisClient.on('error', async () => await redisClient.connect());
+    //   redisClient.on('disconnect', async () => {
+    //     console.log('Disconnect');
+    //     await redisClient.connect();
+    //   });
+    //   await redisClient.connect();
+    // };
 
     // Swagger
     const config = new DocumentBuilder()
@@ -68,9 +66,9 @@ class CallChatApplication {
     });
 
     // Template engine
-    app.useStaticAssets(join(__dirname, '..', 'public'));
-    app.setBaseViewsDir(join(__dirname, '..', 'views'));
-    app.setViewEngine('ejs');
+    // app.useStaticAssets(join(__dirname, '..', 'public'));
+    // app.setBaseViewsDir(join(__dirname, '..', 'views'));
+    // app.setViewEngine('ejs');
 
     // Reflector & metatdata, Guards, Interceptor
     const reflector = app.get(Reflector);

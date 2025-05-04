@@ -1,0 +1,99 @@
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import {
+  AccountRequest,
+  TAccountRequest,
+} from 'src/decorators/account-request.decorator';
+import { CreateConversationDto } from './model/create-conversation.dto';
+import { QueryMessageDto } from './model/query-message.dto';
+import { ConversationActionDto } from './model/action-conversation.dto';
+import { ConversationActionType } from './model/action.enum';
+import { ConversationService } from './conversations.service';
+
+@Controller('conversations')
+export class GroupsController {
+  
+  constructor(private readonly conversationService: ConversationService) {}
+
+  @Get('/:id')
+  async getConversationDetail(
+    @Param('id') id: number,
+    @AccountRequest() account: TAccountRequest,
+  ) {
+    return this.conversationService.getConversationDetail(account, id);
+  }
+
+  @Post('/create')
+  async creteConversation(
+    @Body() createConversationDto: CreateConversationDto,
+    @AccountRequest() account: TAccountRequest,
+  ) {
+    return this.conversationService.createConversation(
+      createConversationDto,
+      account,
+    );
+  }
+
+  @Get('/:id/message')
+  async getConversationMessages(
+    @Body() queryMessageDto: QueryMessageDto,
+    @AccountRequest() account: TAccountRequest,
+    @Param() id: number,
+  ) {
+    return this.conversationService.getConversationMessages(account, {
+      ...queryMessageDto,
+      conversationId: id,
+    });
+  }
+
+  // @Get('')
+  // findAll(
+  //   @AccountRequest() account: TAccountRequest,
+  // ) {
+  //   return this.groupsService.getConversations(account);
+  // }
+
+  @Post('/:id/kick')
+  async kickParticipant(
+    @Param() id: number,
+    @AccountRequest() account: TAccountRequest,
+    @Body() actionDto: ConversationActionDto,
+  ) {
+    if (actionDto.actionType !== ConversationActionType.KICK) {
+      throw new Error('Invalid action type');
+    }
+
+    return await this.conversationService.kickParticipant(account, {
+      ...actionDto,
+      conversationId: id,
+    });
+  }
+
+  @Post('/:id/add')
+  async manageParticipant(
+    @Param() id: number,
+    @AccountRequest() account: TAccountRequest,
+    @Body() actionDto: ConversationActionDto,
+  ) {
+    switch (actionDto.actionType) {
+      case ConversationActionType.ADD:
+        return await this.conversationService.addParticipant(account, {
+          ...actionDto,
+          conversationId: id,
+        });
+      default:
+        throw new Error('Invalid action type');
+    }
+  }
+
+  @Post(':id/leave')
+  async leaveConversation(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') id: number,
+    @Body() actionDto: ConversationActionDto,
+  ) {
+    return await this.conversationService.leaveConversation(account, {
+      ...actionDto,
+      conversationId: id,
+    });
+  }
+}

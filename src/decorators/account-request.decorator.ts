@@ -18,5 +18,6 @@ export type TCustomRequest = Request & {
 
 // role: AccountRole;
 export type TAccountRequest = {
-  id: string;
+  id: number;
+  type
 };
