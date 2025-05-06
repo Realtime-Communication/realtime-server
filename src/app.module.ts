@@ -13,22 +13,22 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { FriendsModule } from './friends/friends.module';
 import { ConversationService } from './groups/conversations.service';
 
-export const RedisOptions: CacheModuleAsyncOptions = {
-  isGlobal: true,
-  imports: [ConfigModule],
-  useFactory: async (configService: ConfigService) => {
-    const store = await redisStore({
-      url: process.env.REDIS_URL,
-    });
-    return {
-      store: () => store,
-      ttl: configService.get<string>('REDIS_TTL'),
-      host: configService.get<string>('REDIS_HOST'),
-      port: configService.get<string>('REDIS_PORT'),
-    };
-  },
-  inject: [ConfigService],
-};
+// export const RedisOptions: CacheModuleAsyncOptions = {
+//   isGlobal: true,
+//   imports: [ConfigModule],
+//   useFactory: async (configService: ConfigService) => {
+//     const store = await redisStore({
+//       url: process.env.REDIS_URL,
+//     });
+//     return {
+//       store: () => store,
+//       ttl: configService.get<string>('REDIS_TTL'),
+//       host: configService.get<string>('REDIS_HOST'),
+//       port: configService.get<string>('REDIS_PORT'),
+//     };
+//   },
+//   inject: [ConfigService],
+// };
 
 @Module({
   imports: [
@@ -41,17 +41,17 @@ export const RedisOptions: CacheModuleAsyncOptions = {
         },
       }),
     }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGODB_URL'),
-      }),
-      inject: [ConfigService],
-    }),
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-    CacheModule.registerAsync(RedisOptions),
+    // MongooseModule.forRootAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: async (configService: ConfigService) => ({
+    //     uri: configService.get<string>('MONGODB_URL'),
+    //   }),
+    //   inject: [ConfigService],
+    // }),
+    // ConfigModule.forRoot({
+    //   isGlobal: true,
+    // }),
+    // CacheModule.registerAsync(RedisOptions),
     UsersModule,
     AuthModule,
     ChatModule,

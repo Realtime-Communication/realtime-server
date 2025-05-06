@@ -14,12 +14,19 @@ import {
 import { UUID } from 'crypto';
 import { UUIDTypes } from 'uuid';
 
-export class CreateMessageDto {
+export enum TargetType {
+  ROOM,
+  FRIEND,
+}
+
+export class MessageDto {
   @IsInt()
   @IsNotEmpty()
   conversation_id: number;
 
   guid: string;
+
+  target: TargetType;
 
   @IsEnum(MessageType)
   @IsNotEmpty()

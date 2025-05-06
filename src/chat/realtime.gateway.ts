@@ -11,9 +11,10 @@ import { ChatService } from './message.service';
 import { Inject, UseGuards } from '@nestjs/common';
 import { WsGuard } from 'src/auth/ws-auth.guard';
 import { CacheManager } from './cache.service';
-import { CreateMessageDto } from './dto/create-message.dto';
+import { MessageDto, TargetType } from './dto/create-message.dto';
 import { randomUUID } from 'crypto';
 import { UserService } from 'src/users/users.service';
+import { FriendsService } from 'src/friends/friends.service';
 
 @UseGuards(WsGuard)
 @WebSocketGateway({
@@ -29,18 +30,36 @@ export class ChatGateway
     private readonly chatService: ChatService,
     private readonly userService: UserService,
     private readonly cacheManager: CacheManager,
+    private readonly friendSerivce: FriendsService,
   ) {}
 
   @WebSocketServer()
   private server: Server;
   private wsClients = new Map<string, string>();
 
-  // @UseGuards(WsGuard)
+  async getFriendSocket(senderId: number, friendId: number) {
+    return `friend:${Math.min(senderId, friendId)}:${Math.max(
+      senderId,
+      friendId,
+    )}`;
+  }
+
+  async 
+
+  async validateAndSend() {}
+
   @SubscribeMessage('sendMessage')
-  async messageInGoing(client: any, messageDto: CreateMessageDto) {
+  async messageInGoing(client: any, messageDto: MessageDto) {
     messageDto.timestamp = new Date();
     messageDto.guid = crypto.randomUUID();
+
     this.chatService.saveMessage(client.account, messageDto);
+
+    if (messageDto.target == TargetType.FRIEND) {
+      this.server
+        .to(getFriendSocket(client, messageDto))
+        .emit('messageComing', messageDto);
+    }
 
     const otherSocketId =
       (await this.cacheManager.getSocketId(data.to_id)) ||
@@ -167,17 +186,17 @@ export class ChatGateway
     const sockethandleConnectionId = client.id;
 
     // Save socket ID & mark as online
-    await this.cacheManager.addUserSocket(userId, sockethandleConnectionId)
+    await this.cacheManager.addUserSocket(userId, sockethandleConnectionId);
     // await this.cacheManager.setOnline(userId);
 
     // Fetch friend IDs and group IDs from database
-    const friendIds: number[] = await this.userService.getFriendIds(userId);
-    const groupIds: number[] = await this.userService.getGroupIds(userId);
+    const friendIds: number[] = await this.friendSerivce.getFriendIds(userId);
+    const groupIds: number[] = await this.friendSerivce.getGroupIds(userId);
 
     const onlineFriendIds: number[] = [];
 
     for (const friendId of friendIds) {
-      const isOnline = await this.cacheManager.isOnline(friendId);
+      const isOnline = await this.cacheManager.isUserOnline(friendId);
       if (isOnline) {
         onlineFriendIds.push(friendId);
 
@@ -201,7 +220,7 @@ export class ChatGateway
     client.emit('onlineFriends', { friends: onlineFriendIds });
 
     // Optional: send updated list of online users
-    const allOnlineUsers = await this.cacheManager.getAllOnlineUserIds();
+    const allOnlineUsers = await this.cacheManager.getOnlineUsers();
     this.server.emit('listOnline', { listOnline: allOnlineUsers });
 
     console.log(

@@ -4,14 +4,14 @@ import mongoose, { Model } from 'mongoose';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
-import { CreateMessageDto } from './dto/create-message.dto';
+import { MessageDto } from './dto/create-message.dto';
 import { CallStatus, CallType, MessageStatus } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async saveMessage(account: TAccountRequest, messageDto: CreateMessageDto) {
+  async saveMessage(account: TAccountRequest, messageDto: MessageDto) {
     const conversation = await this.prismaService.conversation.findFirst({
       where: {
         id: messageDto.conversation_id,
@@ -154,6 +154,20 @@ export class ChatService {
     };
   }
 
+  async validateConversationAccess(userId: number, conversationId: number): Promise<boolean> {
+    const participant = await this.prismaService.participant.findFirst({
+      where: {
+        conversation_id: conversationId,
+        user_id: userId,
+        conversation: {
+          deleted_at: null
+        }
+      }
+    });
+    
+    return !!participant;
+  }
+
   // async getMyChats(user_id: string) {
   //   try {
   //     const chats = await this.chatModel
@@ -273,7 +287,7 @@ export class ChatService {
   //   try {
   //     return await this.chatModel.updateOne(
   //       { _id: id },
-  //       { $set: { deleted: true } },
+  //       { $set: { deleted: true },
   //     );
   //   } catch (error) {
   //     console.log('delete msg error');

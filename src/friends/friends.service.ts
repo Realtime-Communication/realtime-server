@@ -76,6 +76,39 @@ export class FriendsService {
     };
   }
 
+  async getGroupIds(userId: number): Promise<number[]> {
+    const participants = await this.prismaService.participant.findMany({
+      where: {
+        user_id: userId,
+        conversation: {
+          deleted_at: null,
+        },
+      },
+      select: {
+        conversation_id: true,
+      },
+    });
+
+    return participants.map((p) => p.conversation_id);
+  }
+
+  async getFriendIds(userId: number): Promise<number[]> {
+    const friends = await this.prismaService.friend.findMany({
+      where: {
+        OR: [{ requester_id: userId }, { receiver_id: userId }],
+        status: FriendStatus.ACCEPTED,
+      },
+      select: {
+        requester_id: true,
+        receiver_id: true,
+      },
+    });
+
+    return friends.map((friend) =>
+      friend.requester_id === userId ? friend.receiver_id : friend.requester_id,
+    );
+  }
+
   async findAll(
     account: TAccountRequest,
     pageable: Pageable,
