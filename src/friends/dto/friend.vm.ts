@@ -1,4 +1,12 @@
-import { FriendStatus } from './create-friend.dto';
+import { FriendStatus } from "@prisma/client";
+
+interface UserInfo {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  is_active?: boolean;
+}
 
 export class FriendVm {
   id: number;
@@ -7,17 +15,23 @@ export class FriendVm {
   status: FriendStatus;
   created_at: Date;
 
-  requester?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
+  requester: UserInfo;
+  receiver: UserInfo;
 
-  receiver?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
+  // Helper methods
+  // functionisFriend(): boolean {
+  //   return this.status === FriendStatus.ACCEPTED;
+  // }
+
+  // isPending(): boolean {
+  //   return this.status === FriendStatus.PENDING;
+  // }
+
+  // isRejected(): boolean {
+  //   return this.status === FriendStatus.REJECTED;
+  // }
+
+  // getOtherUser(userId: number): UserInfo {
+  //   return userId === this.requester_id ? this.receiver : this.requester;
+  // }
 }

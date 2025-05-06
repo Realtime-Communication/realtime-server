@@ -30,7 +30,7 @@ export class ChatService {
 
     const message = await this.prismaService.message.create({
       data: {
-        guid: crypto.randomUUID(),
+        guid: messageDto.guid,
         conversation_id: messageDto.conversation_id,
         sender_id: account.id,
         message_type: messageDto.message_type,

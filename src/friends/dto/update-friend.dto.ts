@@ -1,11 +1,8 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateFriendDto, FriendStatus } from './create-friend.dto';
-import { IsEnum, IsOptional } from 'class-validator';
+import { FriendStatus } from '@prisma/client';
+import { IsEnum, IsNotEmpty } from 'class-validator';
 
-export class UpdateFriendDto extends PartialType(CreateFriendDto) {
-  id?: number;
-
+export class UpdateFriendDto {
   @IsEnum(FriendStatus)
-  @IsOptional()
-  status?: FriendStatus;
+  @IsNotEmpty()
+  status: FriendStatus;
 }

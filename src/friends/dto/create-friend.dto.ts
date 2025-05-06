@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsInt, IsNotEmpty } from 'class-validator';
 
 export enum FriendStatus {
   PENDING = 'PENDING',
@@ -9,12 +9,5 @@ export enum FriendStatus {
 export class CreateFriendDto {
   @IsInt()
   @IsNotEmpty()
-  requester_id: number;
-
-  @IsInt()
-  @IsNotEmpty()
   receiver_id: number;
-
-  @IsEnum(FriendStatus)
-  status?: FriendStatus = FriendStatus.PENDING;
 }

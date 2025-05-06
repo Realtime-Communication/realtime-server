@@ -3,18 +3,9 @@ import {
   Delete,
   Get,
   Injectable,
-  Param,
-  Post,
-  Query,
-  Render,
-  Req,
-  Request,
-  Res,
-  UseGuards,
+  Param, 
 } from '@nestjs/common';
 import { ChatService } from './message.service';
-import mongoose from 'mongoose';
-import { AccountRequest, TAccountRequest } from 'src/decorators/account-request.decorator';
 
 @Injectable()
 @Controller('chats')

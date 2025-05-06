@@ -11,11 +11,15 @@ import {
   MessageStatus,
   MessageType,
 } from '@prisma/client';
+import { UUID } from 'crypto';
+import { UUIDTypes } from 'uuid';
 
 export class CreateMessageDto {
   @IsInt()
   @IsNotEmpty()
   conversation_id: number;
+
+  guid: string;
 
   @IsEnum(MessageType)
   @IsNotEmpty()

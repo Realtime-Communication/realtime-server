@@ -8,26 +8,7 @@ import { UserVm } from './users.vm';
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async emailExist(email: string, id?: number): Promise<boolean> {
-    const user = await this.prismaService.user.findUnique({
-      where: {
-        email: email.toLowerCase(),
-      },
-    });
-    return user && id != user.id;
-  }
-
-  async create(createUserDto: CreateUserDto): Promise<UserVm> {
-    if (await this.emailExist(createUserDto.email))
-      throw new BadRequestException('User email has exist !');
-    return this.prismaService.user.create({
-      data: {
-        ...createUserDto,
-        created_at: new Date(),
-        updated_at: new Date(),
-      },
-    });
-  }
+  
 
   async findOne(id: number): Promise<UserVm> {
     return await this.prismaService.user.findUnique({ where: { id } });

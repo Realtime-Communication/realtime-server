@@ -210,10 +210,10 @@ model Report {
 // }
 
 model Friend {
-  id           Int    @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   requester_id Int
   receiver_id  Int
-  status       String @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  status       FriendStatus  
 
   requester User @relation("UserRequester", fields: [requester_id], references: [id])
   receiver  User @relation("UserReceiver", fields: [receiver_id], references: [id])
@@ -267,6 +267,12 @@ enum ParticipantType {
 
 enum DeviceType {
   APPLE
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 enum ReportStatus {

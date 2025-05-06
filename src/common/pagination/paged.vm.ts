@@ -2,7 +2,7 @@ export class PagedResponse<T> {
   page: number;
   size: number;
   cursor: number;
-  result: Array<T>;
+  result: T[];
   totalPage: number;
   totalElement: number;
 }

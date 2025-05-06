@@ -15,7 +15,6 @@ import { AuthService } from './auth.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UserService } from 'src/users/users.service';
 import { ApiCreatedResponse } from '@nestjs/swagger';
-import { UserEntity } from 'src/users/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -33,9 +32,7 @@ export class AuthController {
 
   @Public()
   @Post('/register')
-  @ApiCreatedResponse({ type: UserEntity })
-  async register(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
-    return await this.userService.create(createUserDto)
-      .then((user) => new UserEntity(user));
+  async register(@Body() createUserDto: CreateUserDto) {
+    return await this.userService.register(createUserDto);
   }
 }

@@ -12,6 +12,8 @@ import { Inject, UseGuards } from '@nestjs/common';
 import { WsGuard } from 'src/auth/ws-auth.guard';
 import { CacheManager } from './cache.service';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { randomUUID } from 'crypto';
+import { UserService } from 'src/users/users.service';
 
 @UseGuards(WsGuard)
 @WebSocketGateway({
@@ -24,8 +26,9 @@ export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   constructor(
-    private chatService: ChatService,
-    private cacheManager: CacheManager,
+    private readonly chatService: ChatService,
+    private readonly userService: UserService,
+    private readonly cacheManager: CacheManager,
   ) {}
 
   @WebSocketServer()
@@ -34,11 +37,11 @@ export class ChatGateway
 
   // @UseGuards(WsGuard)
   @SubscribeMessage('sendMessage')
-  async messageInGoing(client: any, data: CreateMessageDto) {
-    const date = new Date();
-    data.msgTime = date.toLocaleString();
-    const _id = await this.chatService.saveMessage(data); // to delete message
-    data._id = _id;
+  async messageInGoing(client: any, messageDto: CreateMessageDto) {
+    messageDto.timestamp = new Date();
+    messageDto.guid = crypto.randomUUID();
+    this.chatService.saveMessage(client.account, messageDto);
+
     const otherSocketId =
       (await this.cacheManager.getSocketId(data.to_id)) ||
       this.wsClients.get(data.to_id);
@@ -159,22 +162,51 @@ export class ChatGateway
     );
   }
 
-  async handleConnection(client: any, ...args: any[]) {
-    this.wsClients.set(client.handshake.query.myParam, client.id);
-    await this.cacheManager.addUserId(
-      client.handshake.query.myParam as string,
-      client.id,
-    );
+  async handleConnection(client: any) {
+    const userId = Number(client.handshake.query.myParam);
+    const sockethandleConnectionId = client.id;
+
+    // Save socket ID & mark as online
+    await this.cacheManager.addUserSocket(userId, sockethandleConnectionId)
+    // await this.cacheManager.setOnline(userId);
+
+    // Fetch friend IDs and group IDs from database
+    const friendIds: number[] = await this.userService.getFriendIds(userId);
+    const groupIds: number[] = await this.userService.getGroupIds(userId);
+
+    const onlineFriendIds: number[] = [];
+
+    for (const friendId of friendIds) {
+      const isOnline = await this.cacheManager.isOnline(friendId);
+      if (isOnline) {
+        onlineFriendIds.push(friendId);
+
+        // Store bidirectional graph edge
+        await this.cacheManager.addFriendEdge(userId, friendId);
+        await this.cacheManager.addFriendEdge(friendId, userId);
+
+        // Join friend room (for 1-1 chat)
+        client.join(
+          `friend:${Math.min(userId, friendId)}:${Math.max(userId, friendId)}`,
+        );
+      }
+    }
+
+    // Join all groups
+    for (const groupId of groupIds) {
+      client.join(`group:${groupId}`);
+    }
+
+    // Notify client of online friends
+    client.emit('onlineFriends', { friends: onlineFriendIds });
+
+    // Optional: send updated list of online users
+    const allOnlineUsers = await this.cacheManager.getAllOnlineUserIds();
+    this.server.emit('listOnline', { listOnline: allOnlineUsers });
+
     console.log(
-      await this.cacheManager.getSocketId(
-        client.handshake.query.myParam as string,
-      ),
-      'just connect, client in sever =',
-      await this.cacheManager.size(),
+      `User ${userId} connected. Online friends: ${onlineFriendIds.join(', ')}`,
     );
-    this.server.emit('listOnline', {
-      listOnline: Array.from(this.wsClients.keys()),
-    });
   }
 
   @SubscribeMessage('join_groups')
