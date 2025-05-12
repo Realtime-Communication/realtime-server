@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: main_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-net
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - ./pgadmin-config/servers.json:/pgadmin4/servers.json
+    networks:
+      - app-net
+
+  # Redis In-Memory Cache
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"    # Redis port
+    volumes:
+      - redis-data:/data
+    command: redis-server --requirepass mypassword
+    networks:
+      - app-net
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      REDIS_PASSWORD: mypassword
+    ports:
+      - "8087:8081"
+    depends_on:
+      - redis
+    networks:
+      - app-net
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  app-net:
+    driver: bridge

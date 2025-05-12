@@ -47,6 +47,7 @@ class CallChatApplication {
       .setDescription('API Description')
       .setVersion('1.0')
       .build();
+
     const options: SwaggerDocumentOptions = {
       deepScanRoutes: true,
       ignoreGlobalPrefix: true,
@@ -58,12 +59,12 @@ class CallChatApplication {
 
     app.enableCors();
 
-    // API Versioning
-    app.setGlobalPrefix('api');
-    app.enableVersioning({
-      type: VersioningType.URI,
-      defaultVersion: ['1'],
-    });
+    // --- API Versioning
+    // app.setGlobalPrefix('api');
+    // app.enableVersioning({
+    //   type: VersioningType.URI,
+    //   defaultVersion: ['1'],
+    // });
 
     // Template engine
     // app.useStaticAssets(join(__dirname, '..', 'public'));
@@ -72,13 +73,21 @@ class CallChatApplication {
 
     // Reflector & metatdata, Guards, Interceptor
     const reflector = app.get(Reflector);
-    app.useGlobalGuards(new RolesGuard(reflector));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true, // <- this is critical
+      }),
+    );
+
+    // app.useGlobalGuards(new RolesGuard(reflector));
     app.useGlobalFilters(new AllExceptionsFilter());
     app.useGlobalGuards(new JwtAuthGuard(reflector));
     app.useGlobalInterceptors(new TransformInterceptor(reflector));
 
     await app.listen(configService.get<string>('PORT'));
+
+    
   }
 }
 
-CallChatApplication.bootstrap(['TOP 1 APPLICATION IN THE WORLD']);
+CallChatApplication.bootstrap(['Chat App V1']);

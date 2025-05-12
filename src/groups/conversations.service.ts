@@ -1,15 +1,24 @@
-import { Injectable } from '@nestjs/common';
-import { ResponseMessage } from 'src/decorators/response-message.decorator';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { TAccountRequest } from 'src/decorators/account-request.decorator';
 import { CreateConversationDto } from './model/create-conversation.dto';
 import { Conversation, Message, ParticipantType } from '@prisma/client';
 import { QueryMessageDto } from './model/query-message.dto';
 import { PagedResponse } from 'src/common/pagination/paged.vm';
 import { MessageVm } from 'src/chat/dto/message.vm';
 import { Pageable } from 'src/common/pagination/pageable.dto';
-import { ConversationVm } from './model/conversation.vm';
+import { ConversationVm, ConversationType } from './model/conversation.vm';
 import { ConversationActionDto } from './model/action-conversation.dto';
+
+// Define TAccountRequest interface if not already defined elsewhere
+interface TAccountRequest {
+  id: number;
+  [key: string]: any;
+}
 
 @Injectable()
 export class ConversationService {
@@ -22,7 +31,9 @@ export class ConversationService {
     this.validateCreateConversationRequest(createConversationDto, account);
     return await this.prismaService.conversation.create({
       data: {
-        ...createConversationDto,
+        title: createConversationDto.title,
+        channel_id: createConversationDto.channelId,
+        creator_id: createConversationDto.creatorId,
         avatar_url: null, // NULL DEFAULT
         participants: {
           create: {
@@ -40,29 +51,52 @@ export class ConversationService {
   async getConversationMessages(
     account: TAccountRequest,
     query: QueryMessageDto,
+    
   ): Promise<PagedResponse<MessageVm>> {
+let { conversationId, page = 1, size = 10, order = 'desc' } = query;
+    if (!conversationId || isNaN(conversationId)) {
+      // Get the most recent conversation
+      const recentConversation =
+        await this.prismaService.conversation.findFirst({
+          where: {
+            deleted_at: null,
+            participants: { some: { user_id: account.id } },
+          },
+          orderBy: { updated_at: 'desc' },
+          select: { id: true },
+        });
+
+      if (!recentConversation) {
+        throw new NotFoundException('No conversations found');
+      }
+      conversationId = recentConversation.id;
+    }
+
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      !Number.isInteger(size) ||
+      size < 1
+    ) {
+      throw new BadRequestException('Page and size must be positive integers');
+    }
+
+    const skip = (page - 1) * size;
+
     const [messages, total] = await Promise.all([
       this.prismaService.message.findMany({
         where: {
-          conversation_id: query.conversationId,
+          conversation_id: conversationId,
           deleted_at: null,
           conversation: {
             participants: {
-              some: {
-                user_id: account.id,
-              },
+              some: { user_id: account.id },
             },
           },
-          ...(query.cursor && {
-            created_at: {
-              lt: new Date(query.cursor),
-            },
-          }),
         },
-        take: query.limit,
-        orderBy: {
-          created_at: 'desc',
-        },
+        skip,
+        take: size,
+        orderBy: { created_at: order === 'asc' ? 'asc' : 'desc' },
         include: {
           user: {
             select: {
@@ -84,61 +118,66 @@ export class ConversationService {
       }),
       this.prismaService.message.count({
         where: {
-          conversation_id: query.conversationId,
+          conversation_id: conversationId,
           deleted_at: null,
           conversation: {
             participants: {
-              some: {
-                user_id: account.id,
-              },
+              some: { user_id: account.id },
             },
           },
         },
       }),
     ]);
 
-    const mappedMessages = messages.map((message) => ({
+    if (!messages.length && total === 0) {
+      throw new NotFoundException('No messages found for this conversation');
+    }
+
+    const mappedMessages: MessageVm[] = messages.map((message) => ({
       id: message.id,
       guid: message.guid,
-      conversation_id: message.conversation_id,
-      sender_id: message.sender_id,
-      message_type: message.message_type,
+      conversationId: message.conversation_id,
+      senderId: message.sender_id,
+      messageType: message.message_type,
       content: message.content,
-      created_at: message.created_at,
-      deleted_at: message.deleted_at,
-      call_type: message.call_type,
+      createdAt: message.created_at,
+      deletedAt: message.deleted_at,
+      callType: message.call_type,
       callStatus: message.callStatus,
       status: message.status,
-      user: message.user,
-      attachments: message.attachments,
+      user: message.user
+        ? {
+            id: message.user.id,
+            firstName: message.user.first_name,
+            lastName: message.user.last_name,
+            email: message.user.email,
+          }
+        : undefined,
+      attachments: message.attachments?.map((att) => ({
+        id: att.id,
+        thumbUrl: att.thumb_url,
+        fileUrl: att.file_url,
+      })),
     }));
 
-    const totalPages = Math.ceil(total / query.limit);
-    const nextCursor =
-      messages.length > 0
-        ? messages[messages.length - 1].created_at.getTime()
-        : null;
-
     return {
-      page: query.page,
+      page,
       result: mappedMessages,
-      size: query.limit,
-      totalPage: totalPages,
+      size: size,
+      totalPage: Math.ceil(total / size),
       totalElement: total,
-      cursor: nextCursor,
     };
   }
 
-  async getConversationDetail(account: TAccountRequest, id: number) {
+  async getConversationDetail(
+    account: TAccountRequest,
+    id: number,
+  ): Promise<ConversationVm> {
     const conversation = await this.prismaService.conversation.findFirst({
       where: {
         id,
         deleted_at: null,
-        participants: {
-          some: {
-            user_id: account.id,
-          },
-        },
+        participants: { some: { user_id: account.id } },
       },
       include: {
         participants: {
@@ -154,45 +193,88 @@ export class ConversationService {
             },
           },
         },
+        messages: {
+          where: { deleted_at: null },
+          orderBy: { created_at: 'desc' },
+          take: 1,
+        },
       },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new NotFoundException('Conversation not found or access denied');
     }
 
-    return conversation;
+    // Map to ConversationVm
+    const conversationVm: ConversationVm = {
+      id: conversation.id,
+      title: conversation.title,
+      creatorId: conversation.creator_id,
+      channelId: conversation.channel_id,
+      createdAt: conversation.created_at,
+      updatedAt: conversation.updated_at,
+      deletedAt: conversation.deleted_at,
+      conversationType:
+        conversation.participants.length === 2
+          ? ConversationType.FRIEND
+          : ConversationType.GROUP,
+      participants: conversation.participants.map((p) => ({
+        id: p.id,
+        userId: p.user_id,
+        type: p.type.toLowerCase() as 'lead' | 'member',
+        user: {
+          id: p.user.id,
+          firstName: p.user.first_name,
+          lastName: p.user.last_name,
+          email: p.user.email,
+          isActive: p.user.is_active,
+        },
+      })),
+      lastMessage: conversation.messages[0]
+        ? {
+            id: conversation.messages[0].id,
+            guid: conversation.messages[0].guid,
+            conversationId: conversation.messages[0].conversation_id,
+            senderId: conversation.messages[0].sender_id,
+            messageType: conversation.messages[0].message_type,
+            content: conversation.messages[0].content,
+            createdAt: conversation.messages[0].created_at,
+            deletedAt: conversation.messages[0].deleted_at,
+            callType: conversation.messages[0].call_type,
+            callStatus: conversation.messages[0].callStatus,
+            status: conversation.messages[0].status,
+          }
+        : null,
+    };
+
+    return conversationVm;
   }
 
   async getConversations(
     account: TAccountRequest,
     pageable: Pageable,
   ): Promise<PagedResponse<ConversationVm>> {
+    const { page = 1, size = 10, search, order = 'desc' } = pageable;
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      !Number.isInteger(size) ||
+      size < 1
+    ) {
+      throw new BadRequestException('Page and size must be positive integers');
+    }
+    const skip = (page - 1) * size;
+
     const [conversations, total] = await Promise.all([
       this.prismaService.conversation.findMany({
         where: {
           deleted_at: null,
-          participants: {
-            some: {
-              user_id: account.id,
-            },
-          },
-          ...(pageable.cursor && {
-            created_at: {
-              lt: new Date(pageable.cursor),
-            },
-          }),
-          ...(pageable.search && {
-            title: {
-              contains: pageable.search,
-              mode: 'insensitive',
-            },
-          }),
+          participants: { some: { user_id: account.id } },
+          ...(search && { title: { contains: search, mode: 'insensitive' } }),
         },
-        take: pageable.limit,
-        orderBy: {
-          updated_at: 'desc',
-        },
+        skip,
+        take: size,
+        orderBy: { updated_at: order === 'asc' ? 'asc' : 'desc' },
         include: {
           participants: {
             include: {
@@ -208,141 +290,146 @@ export class ConversationService {
             },
           },
           messages: {
-            where: {
-              deleted_at: null,
-            },
-            orderBy: {
-              created_at: 'desc',
-            },
+            where: { deleted_at: null },
+            orderBy: { created_at: 'desc' },
             take: 1,
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  first_name: true,
+                  last_name: true,
+                  email: true,
+                },
+              },
+            },
           },
         },
       }),
       this.prismaService.conversation.count({
         where: {
           deleted_at: null,
-          participants: {
-            some: {
-              user_id: account.id,
-            },
-          },
-          ...(pageable.search && {
-            title: {
-              contains: pageable.search,
-              mode: 'insensitive',
-            },
-          }),
+          participants: { some: { user_id: account.id } },
+          ...(search && { title: { contains: search, mode: 'insensitive' } }),
         },
       }),
     ]);
 
-    const totalPages = Math.ceil(total / pageable.limit);
-    const nextCursor =
-      conversations.length > 0
-        ? conversations[conversations.length - 1].created_at.getTime()
-        : null;
+    const mappedConversations: ConversationVm[] = conversations.map((conv) => ({
+      id: conv.id,
+      title: conv.title,
+      creatorId: conv.creator_id,
+      channelId: conv.channel_id,
+      createdAt: conv.created_at,
+      updatedAt: conv.updated_at,
+      deletedAt: conv.deleted_at,
+      conversationType:
+        conv.participants.length === 2
+          ? ConversationType.FRIEND
+          : ConversationType.GROUP,
+      participants: conv.participants.map((p) => ({
+        id: p.id,
+        userId: p.user_id,
+        type: p.type.toLowerCase() as 'lead' | 'member',
+      })),
+      lastMessage: conv.messages[0]
+        ? {
+            id: conv.messages[0].id,
+            guid: conv.messages[0].guid,
+            conversationId: conv.messages[0].conversation_id,
+            senderId: conv.messages[0].sender_id,
+            messageType: conv.messages[0].message_type,
+            content: conv.messages[0].content,
+            createdAt: conv.messages[0].created_at,
+            deletedAt: conv.messages[0].deleted_at,
+            callType: conv.messages[0].call_type,
+            callStatus: conv.messages[0].callStatus,
+            status: conv.messages[0].status,
+            user: conv.messages[0].user
+              ? {
+                  id: conv.messages[0].user.id,
+                  firstName: conv.messages[0].user.first_name,
+                  lastName: conv.messages[0].user.last_name,
+                  email: conv.messages[0].user.email,
+                }
+              : undefined,
+          }
+        : null,
+    }));
 
     return {
-      page: pageable.page,
-      size: pageable.limit,
-      totalPage: totalPages,
+      page,
+      size,
+      totalPage: Math.ceil(total / size),
       totalElement: total,
-      cursor: nextCursor,
-      result: conversations,
+      result: mappedConversations,
     };
   }
 
   async kickParticipant(
     account: TAccountRequest,
     conversationAction: ConversationActionDto,
-  ) {
-    // Check if conversation exists and user has permission
+  ): Promise<{ success: boolean; message: string }> {
     const conversation = await this.prismaService.conversation.findFirst({
       where: {
         id: conversationAction.conversationId,
         deleted_at: null,
         participants: {
-          some: {
-            user_id: account.id,
-            type: ParticipantType.lead,
-          },
+          some: { user_id: account.id, type: ParticipantType.lead },
         },
       },
-      include: {
-        participants: true,
-      },
+      include: { participants: true },
     });
 
     if (!conversation) {
-      throw new Error(
-        "Conversation not found or you don't have permission to kick participants",
+      throw new ForbiddenException(
+        'You lack permission or conversation not found',
       );
     }
 
-    // Check if target user exists in conversation
-    const targetParticipant = conversation.participants.find(
+    const target = conversation.participants.find(
       (p) => p.user_id === conversationAction.targetUserId,
     );
-
-    if (!targetParticipant) {
-      throw new Error('Target user is not a participant in this conversation');
+    if (!target) {
+      throw new NotFoundException('Target user not found in conversation');
+    }
+    if (target.type === ParticipantType.lead) {
+      throw new ForbiddenException('Cannot kick the conversation leader');
     }
 
-    // Prevent kicking conversation creator or self
-    if (targetParticipant.type === ParticipantType.lead) {
-      throw new Error('Cannot kick the conversation creator');
-    }
-
-    // Remove participant
-    await this.prismaService.participant.delete({
-      where: {
-        id: targetParticipant.id,
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Participant has been removed from the conversation',
-    };
+    await this.prismaService.participant.delete({ where: { id: target.id } });
+    return { success: true, message: 'Participant removed successfully' };
   }
 
   async addParticipant(
     account: TAccountRequest,
     conversationAction: ConversationActionDto,
-  ) {
-    // Check if conversation exists and user has permission
+  ): Promise<{ success: boolean; message: string; participant: any }> {
     const conversation = await this.prismaService.conversation.findFirst({
       where: {
         id: conversationAction.conversationId,
         deleted_at: null,
         participants: {
-          some: {
-            user_id: account.id,
-            type: ParticipantType.lead,
-          },
+          some: { user_id: account.id, type: ParticipantType.lead },
         },
       },
-      include: {
-        participants: true,
-      },
+      include: { participants: true },
     });
 
     if (!conversation) {
-      throw new Error(
-        "Conversation not found or you don't have permission to add participants",
+      throw new ForbiddenException(
+        'You lack permission or conversation not found',
       );
     }
 
-    // Check if target user is already in conversation
-    const existingParticipant = conversation.participants.find(
-      (p) => p.user_id === conversationAction.targetUserId,
-    );
-
-    if (existingParticipant) {
-      throw new Error('User is already a participant in this conversation');
+    if (
+      conversation.participants.some(
+        (p) => p.user_id === conversationAction.targetUserId,
+      )
+    ) {
+      throw new BadRequestException('User is already a participant');
     }
 
-    // Check if target user exists
     const targetUser = await this.prismaService.user.findFirst({
       where: {
         id: conversationAction.targetUserId,
@@ -350,12 +437,10 @@ export class ConversationService {
         is_blocked: false,
       },
     });
-
     if (!targetUser) {
-      throw new Error('Target user not found or is not available');
+      throw new NotFoundException('Target user not found or unavailable');
     }
 
-    // Add new participant
     const newParticipant = await this.prismaService.participant.create({
       data: {
         conversation_id: conversationAction.conversationId,
@@ -377,7 +462,7 @@ export class ConversationService {
 
     return {
       success: true,
-      message: 'Participant has been added to the conversation',
+      message: 'Participant added successfully',
       participant: newParticipant,
     };
   }
@@ -385,90 +470,76 @@ export class ConversationService {
   async leaveConversation(
     account: TAccountRequest,
     actionDto: ConversationActionDto,
-  ) {
-    // Check if conversation exists and user is a participant
+  ): Promise<{ success: boolean; message: string }> {
     const conversation = await this.prismaService.conversation.findFirst({
       where: {
         id: actionDto.conversationId,
         deleted_at: null,
-        participants: {
-          some: {
-            user_id: account.id,
-          },
-        },
+        participants: { some: { user_id: account.id } },
       },
-      include: {
-        participants: true,
-      },
+      include: { participants: true },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or you are not a participant');
+      throw new NotFoundException(
+        'Conversation not found or you are not a participant',
+      );
     }
 
     const participant = conversation.participants.find(
       (p) => p.user_id === account.id,
     );
-
     if (!participant) {
-      throw new Error('You are not a participant in this conversation');
+      throw new NotFoundException('You are not a participant');
     }
 
-    // Check if user is the leader and if there are other participants
     const isLeader = participant.type === ParticipantType.lead;
-    const otherParticipants = conversation.participants.filter(
+    const others = conversation.participants.filter(
       (p) => p.user_id !== account.id,
     );
 
-    if (isLeader && otherParticipants.length > 0) {
-      // Find the earliest joined member to promote as new leader
-      const newLeader = otherParticipants.reduce((earliest, current) =>
+    if (isLeader && others.length > 0) {
+      const newLeader = others.reduce((earliest, current) =>
         current.created_at < earliest.created_at ? current : earliest,
       );
-
-      // Promote the new leader
       await this.prismaService.participant.update({
         where: { id: newLeader.id },
         data: { type: ParticipantType.lead },
       });
     }
 
-    // Remove the participant
     await this.prismaService.participant.delete({
       where: { id: participant.id },
     });
 
-    // If no participants left, soft delete the conversation
-    if (otherParticipants.length === 0) {
+    if (others.length === 0) {
       await this.prismaService.conversation.update({
         where: { id: actionDto.conversationId },
         data: { deleted_at: new Date() },
       });
-
       return {
         success: true,
-        message:
-          'You left the conversation and it was archived as you were the last participant',
+        message: 'Conversation archived as you were the last participant',
       };
     }
 
     return {
       success: true,
       message: isLeader
-        ? 'You left the conversation and leadership was transferred to another member'
+        ? 'You left and leadership was transferred'
         : 'You left the conversation successfully',
     };
   }
 
-  validateCreateConversationRequest(
+  private validateCreateConversationRequest(
     createConversationDto: CreateConversationDto,
     account: TAccountRequest,
-  ) {
-    if (!createConversationDto.title) {
-      throw new Error('Conversation title is required');
+  ): void {
+    if (!createConversationDto.title?.trim()) {
+      throw new BadRequestException('Conversation title is required');
     }
-    if (!account || createConversationDto.creator_id != account.id) {
-      throw new Error('Valid account is required');
+    if (!account?.id || createConversationDto.creatorId !== account.id) {
+      throw new BadRequestException('Invalid account or creator mismatch');
     }
   }
 }

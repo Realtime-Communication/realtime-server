@@ -1,15 +1,27 @@
+import { User } from "@prisma/client";
+import { MessageVm } from "src/chat/dto/message.vm";
+import { UserVm } from "src/users/users.vm";
+
+export enum ConversationType {
+GROUP ,
+FRIEND
+}
+
 export class ConversationVm {
   id: number;
   title: string;
-  creator_id: number;
-  channel_id: number;
-  created_at: Date;
-  updated_at: Date;
-  deleted_at?: Date;
+  creatorId: number;
+  channelId: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+  conversationType: ConversationType
+  lastMessage: MessageVm
 
   participants?: {
     id: number;
-    user_id: number;
+    userId: number;
     type: 'lead' | 'member';
+    user?: Partial<UserVm>
   }[];
 }

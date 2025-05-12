@@ -4,8 +4,14 @@ import mongoose, { Model } from 'mongoose';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
-import { MessageDto } from './dto/create-message.dto';
-import { CallStatus, CallType, MessageStatus } from '@prisma/client';
+import { MessageDto, CallDto, CallResponseDto } from './dto/create-message.dto';
+import {
+  CallStatus,
+  CallType,
+  MessageStatus,
+  MessageType,
+} from '@prisma/client';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class ChatService {
@@ -14,7 +20,7 @@ export class ChatService {
   async saveMessage(account: TAccountRequest, messageDto: MessageDto) {
     const conversation = await this.prismaService.conversation.findFirst({
       where: {
-        id: messageDto.conversation_id,
+        id: messageDto.conversationId,
         deleted_at: null,
         participants: {
           some: {
@@ -31,18 +37,18 @@ export class ChatService {
     const message = await this.prismaService.message.create({
       data: {
         guid: messageDto.guid,
-        conversation_id: messageDto.conversation_id,
+        conversation_id: messageDto.conversationId,
         sender_id: account.id,
-        message_type: messageDto.message_type,
+        message_type: messageDto.messageType,
         content: messageDto.content || '',
-        call_type: messageDto.call_type || CallType.voice,
+        call_type: messageDto.callType || CallType.voice,
         callStatus: messageDto.callStatus || CallStatus.ENDED,
         status: messageDto.status || MessageStatus.sent,
         attachments: messageDto.attachments
           ? {
               create: messageDto.attachments.map((attachment) => ({
-                thumb_url: attachment.thumb_url,
-                file_url: attachment.file_url,
+                thumb_url: attachment.thumbUrl,
+                file_url: attachment.fileUrl,
               })),
             }
           : undefined,
@@ -62,11 +68,34 @@ export class ChatService {
 
     // Update conversation's last activity
     await this.prismaService.conversation.update({
-      where: { id: messageDto.conversation_id },
+      where: { id: messageDto.conversationId },
       data: { updated_at: new Date() },
     });
 
-    return message;
+    return {
+      id: message.id,
+      guid: message.guid,
+      conversationId: message.conversation_id,
+      senderId: message.sender_id,
+      messageType: message.message_type,
+      content: message.content,
+      createdAt: message.created_at,
+      deletedAt: message.deleted_at,
+      callType: message.call_type,
+      callStatus: message.callStatus,
+      status: message.status,
+      user: message.user ? {
+        id: message.user.id,
+        firstName: message.user.first_name,
+        lastName: message.user.last_name,
+        email: message.user.email,
+      } : undefined,
+      attachments: message.attachments?.map(att => ({
+        id: att.id,
+        thumbUrl: att.thumb_url,
+        fileUrl: att.file_url,
+      })),
+    };
   }
 
   async deleteMessage(account: TAccountRequest, messageId: number) {
@@ -154,18 +183,93 @@ export class ChatService {
     };
   }
 
-  async validateConversationAccess(userId: number, conversationId: number): Promise<boolean> {
+  async validateConversationAccess(
+    userId: number,
+    conversationId: number,
+  ): Promise<boolean> {
     const participant = await this.prismaService.participant.findFirst({
       where: {
         conversation_id: conversationId,
         user_id: userId,
         conversation: {
-          deleted_at: null
-        }
-      }
+          deleted_at: null,
+        },
+      },
     });
-    
+
     return !!participant;
+  }
+
+  async handleCall(account: TAccountRequest, callDto: CallDto) {
+    // Validate that the caller has access to the conversation with the callee
+    const hasAccess = await this.validateConversationAccess(
+      account.id,
+      callDto.conversationId,
+    );
+    if (!hasAccess) {
+      throw new Error('Call access denied');
+    }
+
+    // Create a call record in the database
+    const call = await this.prismaService.message.create({
+      data: {
+        guid: crypto.randomUUID(),
+        conversation_id: callDto.conversationId,
+        sender_id: account.id,
+        message_type: MessageType.call,
+        call_type: CallType.voice,
+        callStatus: CallStatus.INVITED,
+        status: MessageStatus.sent,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return call;
+  }
+
+  async handleCallResponse(account: TAccountRequest, responseDto: CallDto) {
+    // Update call status in the database
+    const call = await this.prismaService.message.updateMany({
+      where: {
+        conversation_id: responseDto.conversationId,
+        sender_id: account.id,
+        message_type: MessageType.call,
+        callStatus: CallStatus.INVITED,
+      },
+      data: {
+        callStatus: CallStatus.ONGOING,
+      },
+    });
+
+    return call;
+  }
+
+  async handleCallEnd(account: TAccountRequest, callDto: CallDto) {
+    // Update call status to ended
+    const call = await this.prismaService.message.updateMany({
+      where: {
+        conversation_id: callDto.conversationId,
+        sender_id: account.id,
+        message_type: MessageType.call,
+        callStatus: {
+          in: [CallStatus.INVITED, CallStatus.ONGOING],
+        },
+      },
+      data: {
+        callStatus: CallStatus.ENDED,
+      },
+    });
+
+    return call;
   }
 
   // async getMyChats(user_id: string) {

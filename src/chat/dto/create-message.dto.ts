@@ -11,8 +11,8 @@ import {
   MessageStatus,
   MessageType,
 } from '@prisma/client';
-import { UUID } from 'crypto';
-import { UUIDTypes } from 'uuid';
+import { TAccountRequest } from 'src/decorators/account-request.decorator';
+import { ConversationType } from 'src/groups/model/conversation.vm';
 
 export enum TargetType {
   ROOM,
@@ -22,15 +22,16 @@ export enum TargetType {
 export class MessageDto {
   @IsInt()
   @IsNotEmpty()
-  conversation_id: number;
+  conversationId: number;
 
   guid: string;
 
-  target: TargetType;
+  @IsNotEmpty()
+  conversationType: ConversationType;
 
   @IsEnum(MessageType)
   @IsNotEmpty()
-  message_type: MessageType;
+  messageType: MessageType;
 
   @IsString()
   @IsOptional()
@@ -38,7 +39,7 @@ export class MessageDto {
 
   @IsEnum(CallType)
   @IsOptional()
-  call_type?: CallType;
+  callType?: CallType;
 
   @IsEnum(CallStatus)
   @IsOptional()
@@ -52,7 +53,25 @@ export class MessageDto {
 
   @IsOptional()
   attachments?: {
-    thumb_url: string;
-    file_url: string;
+    thumbUrl: string;
+    fileUrl: string;
   }[];
+
+  user: TAccountRequest;
+}
+
+export class CallDto extends MessageDto {
+  // @IsInt()
+  // @IsNotEmpty()
+  // from: number;
+
+  @IsString()
+  @IsNotEmpty()
+  signalData: string;
+}
+
+export class CallResponseDto extends MessageDto {
+  @IsString()
+  @IsNotEmpty()
+  signal: string;
 }

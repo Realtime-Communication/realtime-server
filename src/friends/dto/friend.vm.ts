@@ -16,22 +16,5 @@ export class FriendVm {
   created_at: Date;
 
   requester: UserInfo;
-  receiver: UserInfo;
-
-  // Helper methods
-  // functionisFriend(): boolean {
-  //   return this.status === FriendStatus.ACCEPTED;
-  // }
-
-  // isPending(): boolean {
-  //   return this.status === FriendStatus.PENDING;
-  // }
-
-  // isRejected(): boolean {
-  //   return this.status === FriendStatus.REJECTED;
-  // }
-
-  // getOtherUser(userId: number): UserInfo {
-  //   return userId === this.requester_id ? this.receiver : this.requester;
-  // }
+  receiver: UserInfo; 
 }

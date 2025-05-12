@@ -3,33 +3,51 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateFriendDto } from './dto/create-friend.dto';
+import { AddFriendDto } from './dto/create-friend.dto';
 import { UpdateFriendDto } from './dto/update-friend.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { FriendVm } from './dto/friend.vm';
 import { PagedResponse } from 'src/common/pagination/paged.vm';
 import { Pageable } from 'src/common/pagination/pageable.dto';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
-import { FriendStatus } from '@prisma/client';
+import { FriendStatus, ParticipantType } from '@prisma/client';
 
 @Injectable()
 export class FriendsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async create(
+  async addFriend(
     account: TAccountRequest,
-    createFriendDto: CreateFriendDto,
+    addFriendDto: AddFriendDto,
   ): Promise<FriendVm> {
+    // Find the receiver user by email or id
+    const receiver = await this.prismaService.user.findFirst({
+      where: {
+        OR: [
+          ...(addFriendDto.email ? [{ email: addFriendDto.email }] : []),
+          ...(addFriendDto.receiverId ? [{ id: addFriendDto.receiverId }] : []),
+        ],
+      },
+    });
+
+    if (!receiver) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (receiver.id === account.id) {
+      throw new BadRequestException('Cannot add yourself as friend');
+    }
+
     // Check if friendship already exists
     const existingFriend = await this.prismaService.friend.findFirst({
       where: {
         OR: [
           {
             requester_id: account.id,
-            receiver_id: createFriendDto.receiver_id,
+            receiver_id: receiver.id,
           },
           {
-            requester_id: createFriendDto.receiver_id,
+            requester_id: receiver.id,
             receiver_id: account.id,
           },
         ],
@@ -40,10 +58,72 @@ export class FriendsService {
       throw new BadRequestException('Friendship request already exists');
     }
 
-    const friend = await this.prismaService.friend.create({
-      data: {
-        requester_id: account.id,
-        receiver_id: createFriendDto.receiver_id,
+    return await this.prismaService.$transaction(async (prisma) => {
+      const friend = await this.prismaService.friend.create({
+        data: {
+          requester_id: account.id,
+          receiver_id: receiver.id,
+          status: FriendStatus.PENDING,
+        },
+        include: {
+          requester: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      await this.prismaService.conversation.create({
+        data: {
+          title: `${friend.requester.first_name} ${friend.requester.last_name} and ${friend.receiver.first_name} ${friend.receiver.last_name}`,
+          channel_id: account.id + receiver.id,
+          creator_id: account.id,
+          avatar_url: "sdfsdfsdfff.com", // NULL DEFAULT
+          participants: {
+            createMany: {
+              data: [
+                {
+                  user_id: account.id,
+                  type: ParticipantType.member,
+                },
+                {
+                  user_id: receiver.id,
+                  type: ParticipantType.member,
+                },
+              ],
+            },
+          },
+        },
+        include: {
+          participants: true,
+        },
+      });
+      return {
+        ...friend,
+      };
+    });
+  }
+
+  async acceptFriendRequest(
+    account: TAccountRequest,
+    friendShipRequestId: number,
+  ): Promise<FriendVm> {
+    const friend = await this.prismaService.friend.findFirst({
+      where: {
+        id: friendShipRequestId,
+        receiver_id: account.id,
         status: FriendStatus.PENDING,
       },
       include: {
@@ -66,14 +146,34 @@ export class FriendsService {
       },
     });
 
-    return {
-      ...friend,
-      // updated_at: friend.created_at,
-      // isFriend: friend.status === FriendStatus.ACCEPTED,
-      // isPending: friend.status === FriendStatus.PENDING,
-      // isRejected: friend.status === FriendStatus.REJECTED,
-      // getOtherUser: () => friend.requester_id === account.id ? friend.receiver : friend.requester,
-    };
+    if (!friend) {
+      throw new NotFoundException(
+        'Friend request not found or already processed',
+      );
+    }
+
+    return await this.prismaService.friend.update({
+      where: { id: friendShipRequestId },
+      data: { status: FriendStatus.ACCEPTED },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+          },
+        },
+        receiver: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+          },
+        },
+      },
+    });
   }
 
   async getGroupIds(userId: number): Promise<number[]> {
@@ -176,8 +276,8 @@ export class FriendsService {
             },
           },
         },
-        take: pageable.limit,
-        skip: (pageable.page - 1) * pageable.limit,
+        take: pageable.size,
+        skip: (pageable.page - 1) * pageable.size,
       }),
       this.prismaService.friend.count({
         where: {
@@ -190,10 +290,10 @@ export class FriendsService {
     console.log(x);
 
     return {
-      cursor: pageable.cursor,
+      // cursor: pageable.cursor,
       page: pageable.page,
-      size: pageable.limit,
-      totalPage: Math.ceil(total / pageable.limit),
+      size: pageable.size,
+      totalPage: Math.ceil(total / pageable.size),
       totalElement: total,
       result: friends,
     };

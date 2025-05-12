@@ -8,13 +8,13 @@ import { ConfigService } from '@nestjs/config';
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly authService: AuthService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     super();
   }
 
   async validate(username: string, password: string): Promise<any> {
-    this.configService.get<string>('JWT_ACCESS_TOKEN')
+    // this.configService.get<string>('JWT_ACCESS_TOKEN');
     const user = await this.authService.validateUser(username, password);
     if (!user) {
       throw new UnauthorizedException();

@@ -7,9 +7,9 @@ export class CreateConversationDto {
 
   @IsInt()
   @IsNotEmpty()
-  creator_id: number;
+  creatorId: number;
 
   @IsInt()
   @IsNotEmpty()
-  channel_id: number;
+  channelId: number;
 }

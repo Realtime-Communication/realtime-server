@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import {
   AccountRequest,
   TAccountRequest,
@@ -8,10 +8,10 @@ import { QueryMessageDto } from './model/query-message.dto';
 import { ConversationActionDto } from './model/action-conversation.dto';
 import { ConversationActionType } from './model/action.enum';
 import { ConversationService } from './conversations.service';
+import { Pageable } from 'src/common/pagination/pageable.dto';
 
 @Controller('conversations')
 export class GroupsController {
-  
   constructor(private readonly conversationService: ConversationService) {}
 
   @Get('/:id')
@@ -20,6 +20,14 @@ export class GroupsController {
     @AccountRequest() account: TAccountRequest,
   ) {
     return this.conversationService.getConversationDetail(account, id);
+  }
+
+  @Get('')
+  async getConversation(
+    @AccountRequest() account: TAccountRequest,
+    @Query() pageable: Pageable,
+  ) {
+    return await this.conversationService.getConversations(account, pageable);
   }
 
   @Post('/create')
@@ -37,7 +45,7 @@ export class GroupsController {
   async getConversationMessages(
     @Body() queryMessageDto: QueryMessageDto,
     @AccountRequest() account: TAccountRequest,
-    @Param() id: number,
+    @Param('id') id: number,
   ) {
     return this.conversationService.getConversationMessages(account, {
       ...queryMessageDto,

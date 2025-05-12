@@ -3,26 +3,26 @@ import { CallStatus, CallType, MessageStatus, MessageType } from '@prisma/client
 export class MessageVm {
   id: number;
   guid: string;
-  conversation_id: number;
-  sender_id: number;
-  message_type: MessageType;
+  conversationId: number;
+  senderId: number;
+  messageType: MessageType;
   content: string;
-  created_at: Date;
-  deleted_at?: Date;
-  call_type: CallType;
+  createdAt: Date;
+  deletedAt?: Date;
+  callType: CallType;
   callStatus: CallStatus;
   status: MessageStatus;
 
   user?: {
     id: number;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     email: string;
   };
 
   attachments?: {
     id: number;
-    thumb_url: string;
-    file_url: string;
+    thumbUrl: string;
+    fileUrl: string;
   }[];
 }

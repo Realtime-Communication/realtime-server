@@ -47,10 +47,4 @@ export class CreateUserDto {
 
   @ApiProperty()
   preferences: string;
-
-  @ApiProperty()
-  created_at: Date;
-
-  @ApiProperty()
-  updated_at: Date;
 }

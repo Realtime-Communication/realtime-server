@@ -1,13 +1,13 @@
-import { IsInt, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsInt, IsNotEmpty } from 'class-validator';
 
 export enum FriendStatus {
   PENDING = 'PENDING',
   ACCEPTED = 'ACCEPTED',
-  REJECTED = 'REJECTED'
+  REJECTED = 'REJECTED',
 }
 
-export class CreateFriendDto {
-  @IsInt()
-  @IsNotEmpty()
-  receiver_id: number;
+export class AddFriendDto {
+  email?: string;
+
+  receiverId?: number;
 }

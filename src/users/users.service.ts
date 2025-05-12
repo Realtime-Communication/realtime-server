@@ -8,16 +8,34 @@ import { UserVm } from './users.vm';
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  
+  private toUserVm(user: any): UserVm {
+    return {
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      password: user.password,
+      firstName: user.first_name,
+      middleName: user.middle_name,
+      lastName: user.last_name,
+      isActive: user.is_active,
+      isReported: user.is_reported,
+      isBlocked: user.is_blocked,
+      preferences: user.preferences,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+    };
+  }
 
   async findOne(id: number): Promise<UserVm> {
-    return await this.prismaService.user.findUnique({ where: { id } });
+    const user = await this.prismaService.user.findUnique({ where: { id } });
+    return this.toUserVm(user);
   }
 
   async findByEmail(email: string): Promise<UserVm> {
-    return await this.prismaService.user.findUnique({
+    const user = await this.prismaService.user.findUnique({
       where: { email: email },
     });
+    return this.toUserVm(user);
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<UserVm> {
@@ -25,13 +43,13 @@ export class UserService {
       where: { id },
       data: updateUserDto,
     });
-    return user;
+    return this.toUserVm(user);
   }
 
   async remove(id: number): Promise<UserVm> {
     const user = await this.prismaService.user.delete({
       where: { id },
     });
-    return user;
+    return this.toUserVm(user);
   }
 }

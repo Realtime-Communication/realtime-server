@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  Injectable,
-  Param, 
-} from '@nestjs/common';
+import { Controller, Delete, Get, Injectable, Param } from '@nestjs/common';
 import { ChatService } from './message.service';
 
 @Injectable()
@@ -28,13 +22,13 @@ export class MessageController {
   //   else return await this.chatService.getChatWithId(to_id, limit, user._id);
   // }
 
-  @Get('/getlastchats')
-  async GetLastChats(@User() user: IUser) {
-    return this.chatService.getLastChats(user);
-  }
+  // @Get('/getlastchats')
+  // async GetLastChats(@User() user: IUser) {
+  //   return this.chatService.getLastChats(user);
+  // }
 
-  @Delete('/delete/:id')
-  async DeleteChat(@Param('id') id: string) {
-    return this.chatService.deleteChat(id);
-  }
+  // @Delete('/delete/:id')
+  // async DeleteChat(@Param('id') id: string) {
+  //   return this.chatService.deleteChat(id);
+  // }
 }

@@ -3,13 +3,13 @@ export class UserVm {
   phone: string;
   email: string;
   password: string;
-  first_name: string;
-  middle_name: string;
-  last_name: string;
-  is_active: boolean;
-  is_reported: boolean;
-  is_blocked: boolean;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  isActive: boolean;
+  isReported: boolean;
+  isBlocked: boolean;
   preferences: string;
-  created_at: Date;
-  updated_at: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }

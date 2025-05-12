@@ -10,8 +10,9 @@ import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { redisStore } from 'cache-manager-redis-store';
 import { PrismaModule } from './common/prisma/prisma.module';
-import { FriendsModule } from './friends/friends.module';
+import { FriendModule } from './friends/friends.module';
 import { ConversationService } from './groups/conversations.service';
+import { ConversationModule } from './groups/conversations.module';
 
 // export const RedisOptions: CacheModuleAsyncOptions = {
 //   isGlobal: true,
@@ -38,9 +39,15 @@ import { ConversationService } from './groups/conversations.service';
         options: {
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT || '6379'),
+          password: process.env.REDIS_PASSWORD || 'mypassword', // ✅ ADD THIS
         },
       }),
     }),
+
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
     // MongooseModule.forRootAsync({
     //   imports: [ConfigModule],
     //   useFactory: async (configService: ConfigService) => ({
@@ -55,10 +62,10 @@ import { ConversationService } from './groups/conversations.service';
     UsersModule,
     AuthModule,
     ChatModule,
-    ConversationService,
+    ConversationModule,
     PrismaModule,
     RedisModule,
-    FriendsModule,
+    FriendModule,
   ],
   controllers: [AppController],
   providers: [AppService],

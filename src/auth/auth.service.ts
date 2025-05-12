@@ -11,6 +11,7 @@ import { SecutiryUtils } from 'src/utils/security.util';
 import { AuthDto } from './dto/auth.dto';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { User } from '@prisma/client';
+import { LoginRequest } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +31,7 @@ export class AuthService {
   }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
+    
     if (await this.emailExist(createUserDto.email)) {
       throw new BadRequestException('User email already exists!');
     }
@@ -79,8 +81,11 @@ export class AuthService {
     return result;
   }
 
-  async login(authDto: AuthDto) {
-    const user = await this.validateUser(authDto.email, authDto.password);
+  async login(loginRequest: LoginRequest) {
+    const user = await this.validateUser(
+      loginRequest.email,
+      loginRequest.password,
+    );
 
     // Create device entry if deviceId is provided
     // let device;
@@ -102,9 +107,11 @@ export class AuthService {
     // }
 
     // Generate JWT token
-    const access_token = this.jwtService.sign({
+    const accessToken = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      id: user.id,
+      type: ""
     });
 
     // Create access record
@@ -119,13 +126,13 @@ export class AuthService {
     // }
 
     return {
-      access_token,
+      accessToken,
       user: {
         id: user.id,
         email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        is_active: user.is_active,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        isActive: user.is_active,
       },
     };
   }
