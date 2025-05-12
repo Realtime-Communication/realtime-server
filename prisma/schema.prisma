@@ -1,281 +1,309 @@
-  datasource db {
-    provider     = "postgresql"
-    url          = env("DATABAssSE_URL")
-    relationMode = "foreignKeys"
-  }
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABAssSE_URL")
+  relationMode = "foreignKeys"
+}
 
-  generator client {
-    provider = "prisma-client-js"
-  }
+generator client {
+  provider = "prisma-client-js"
+}
 
-  model User {
-    id          Int      @id @default(autoincrement())
-    phone       String   @unique
-    email       String   @unique
-    password    String
-    first_name  String   @default("")
-    middle_name String?  @default("")
-    last_name   String   @default("")
-    is_active   Boolean  @default(false)
-    is_reported Boolean  @default(false)
-    is_blocked  Boolean  @default(false)
-    preferences String?  @default("")
-    created_at  DateTime @default(now())
-    updated_at  DateTime @updatedAt
+model User {
+  id          Int      @id @default(autoincrement())
+  phone       String   @unique
+  email       String   @unique
+  password    String
+  first_name  String   @default("")
+  middle_name String?  @default("")
+  last_name   String   @default("")
+  is_active   Boolean  @default(false)
+  is_reported Boolean  @default(false)
+  is_blocked  Boolean  @default(false)
+  preferences String?  @default("")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-    devices               Device[]
-    messages              Message[]
-    participants          Participant[]
-    reports               Report[]
-    deleted_messages      DeletedMessage[]
-    deleted_conversations DeletedConversation[]
-    accesses              Access[]
-    user_contacts         UserContact[]         @relation("UserContacts")
-    contacts              UserContact[]         @relation("ContactRelation")
-    block_lists           BlockList[]
-    user_verification     UserVerification?
-    stories               Story[]
-    friends_requested     Friend[]              @relation("UserRequester")
-    friends_received      Friend[]              @relation("UserReceiver")
-  }
+  devices               Device[]
+  messages              Message[]
+  participants          Participant[]
+  reports               Report[]
+  deleted_messages      DeletedMessage[]
+  deleted_conversations DeletedConversation[]
+  accesses              Access[]
+  // user_contacts         UserContact[]         @relation("UserContacts")
+  // contacts              UserContact[]         @relation("ContactRelation")
+  block_lists           BlockList[]
+  user_verification     UserVerification?
+  stories               Story[]
+  friends_requested     Friend[]              @relation("UserRequester")
+  friends_received      Friend[]              @relation("UserReceiver")
+  story_likes           StoryLike[]
+  story_comments        StoryComment[]
+}
 
-  model Device {
-    id           Int        @id @default(autoincrement())
-    user_id      Int
-    device_id    String
-    device_token String
-    type         DeviceType
-    created_at   DateTime   @default(now())
-    updated_at   DateTime   @updatedAt
+model Device {
+  id           Int        @id @default(autoincrement())
+  user_id      Int
+  device_id    String
+  device_token String
+  type         DeviceType
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
 
-    user     User     @relation(fields: [user_id], references: [id])
-    accesses Access[]
-  }
+  user     User     @relation(fields: [user_id], references: [id])
+  accesses Access[]
+}
 
-  model Access {
-    id         Int       @id @default(autoincrement())
-    user_id    Int
-    device_id  Int
-    token      String
-    created_at DateTime  @default(now())
-    deleted_at DateTime?
+model Access {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  device_id  Int
+  token      String
+  created_at DateTime  @default(now())
+  deleted_at DateTime?
 
-    user   User   @relation(fields: [user_id], references: [id])
-    device Device @relation(fields: [device_id], references: [id])
-  }
+  user   User   @relation(fields: [user_id], references: [id])
+  device Device @relation(fields: [device_id], references: [id])
+}
 
-  model UserVerification {
-    user_id           Int      @id @default(autoincrement())
-    verification_code String
-    created_at        DateTime
-    expired_at        DateTime
+model UserVerification {
+  user_id           Int      @id @default(autoincrement())
+  verification_code String
+  created_at        DateTime
+  expired_at        DateTime
 
-    user User @relation(fields: [user_id], references: [id])
-  }
+  user User @relation(fields: [user_id], references: [id])
+}
 
-  model UserContact {
-    id         Int      @id @default(autoincrement())
-    user_id    Int
-    contact_id Int
-    first_name String   @default("")
-    last_name  String   @default("")
-    created_at DateTime @default(now())
-    updated_at DateTime @updatedAt
+// model UserContact {
+//   id         Int      @id @default(autoincrement())
+//   user_id    Int
+//   contact_id Int
+//   first_name String   @default("")
+//   last_name  String   @default("")
+//   created_at DateTime @default(now())
+//   updated_at DateTime @updatedAt
 
-    user    User @relation("UserContacts", fields: [user_id], references: [id])
-    contact User @relation("ContactRelation", fields: [contact_id], references: [id])
+//   user    User @relation("UserContacts", fields: [user_id], references: [id])
+//   contact User @relation("ContactRelation", fields: [contact_id], references: [id])
 
-    @@unique([user_id, contact_id])
-  }
+//   @@unique([user_id, contact_id])
+// }
 
-  model Contact {
-    id          Int      @id @default(autoincrement())
-    first_name  String   @default("")
-    middle_name String?  @default("")
-    last_name   String   @default("")
-    phone       String
-    email       String
-    created_at  DateTime @default(now())
-  }
+// model Contact {
+//   id          Int      @id @default(autoincrement())
+//   first_name  String   @default("")
+//   middle_name String?  @default("")
+//   last_name   String   @default("")
+//   phone       String
+//   email       String
+//   created_at  DateTime @default(now())
+// }
 
-  model BlockList {
-    id             Int      @id @default(autoincrement())
-    user_id        Int
-    participant_id Int
-    created_at     DateTime @default(now())
+model BlockList {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  participant_id Int
+  created_at     DateTime @default(now())
 
-    user User @relation(fields: [user_id], references: [id])
-  }
+  user User @relation(fields: [user_id], references: [id])
+}
 
-  model Conversation {
-    id         Int       @id @default(autoincrement())
-    title      String
-    creator_id Int
-    channel_id Int
-    created_at DateTime  @default(now())
-    updated_at DateTime  @updatedAt
-    deleted_at DateTime?
-    avatar_url String
+model Conversation {
+  id         Int       @id @default(autoincrement())
+  title      String
+  creator_id Int
+  channel_id Int
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+  avatar_url String
 
-    messages              Message[]
-    participants          Participant[]
-    deleted_conversations DeletedConversation[]
-  }
+  messages              Message[]
+  participants          Participant[]
+  deleted_conversations DeletedConversation[]
+}
 
-  model Participant {
-    id              Int             @id @default(autoincrement())
-    conversation_id Int
-    user_id         Int
-    type            ParticipantType
-    created_at      DateTime        @default(now())
-    updated_at      DateTime        @updatedAt
+model Participant {
+  id              Int             @id @default(autoincrement())
+  conversation_id Int
+  user_id         Int
+  type            ParticipantType
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
 
-    user         User         @relation(fields: [user_id], references: [id])
-    conversation Conversation @relation(fields: [conversation_id], references: [id])
+  user         User         @relation(fields: [user_id], references: [id])
+  conversation Conversation @relation(fields: [conversation_id], references: [id])
 
-    @@unique([conversation_id, user_id])
-  }
+  @@unique([conversation_id, user_id])
+}
 
-  model Message {
-    id              Int           @id @default(autoincrement())
-    guid            String        @default(uuid())
-    conversation_id Int
-    sender_id       Int
-    message_type    MessageType
-    content         String        @default("")
-    created_at      DateTime      @default(now())
-    deleted_at      DateTime?
-    call_type       CallType
-    callStatus      CallStatus
-    status          MessageStatus
+model Message {
+  id              Int           @id @default(autoincrement())
+  guid            String        @default(uuid())
+  conversation_id Int
+  sender_id       Int
+  message_type    MessageType
+  content         String        @default("")
+  created_at      DateTime      @default(now())
+  deleted_at      DateTime?
+  call_type       CallType
+  callStatus      CallStatus
+  status          MessageStatus
 
-    conversation     Conversation     @relation(fields: [conversation_id], references: [id])
-    user             User             @relation(fields: [sender_id], references: [id])
-    attachments      Attachment[]
-    deleted_messages DeletedMessage[]
-  }
+  conversation     Conversation     @relation(fields: [conversation_id], references: [id])
+  user             User             @relation(fields: [sender_id], references: [id])
+  attachments      Attachment[]
+  deleted_messages DeletedMessage[]
+}
 
-  model Attachment {
-    id         Int      @id @default(autoincrement())
-    message_id Int
-    thumb_url  String
-    file_url   String
-    created_at DateTime @default(now())
-    updated_at DateTime @updatedAt
+model Attachment {
+  id         Int      @id @default(autoincrement())
+  message_id Int
+  thumb_url  String
+  file_url   String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-    message Message @relation(fields: [message_id], references: [id])
-  }
+  message Message @relation(fields: [message_id], references: [id])
+}
 
-  model DeletedMessage {
-    id         Int      @id @default(autoincrement())
-    message_id Int
-    user_id    Int
-    created_at DateTime @default(now())
-    updated_at DateTime @updatedAt
+model DeletedMessage {
+  id         Int      @id @default(autoincrement())
+  message_id Int
+  user_id    Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-    message Message @relation(fields: [message_id], references: [id])
-    user    User    @relation(fields: [user_id], references: [id])
-  }
+  message Message @relation(fields: [message_id], references: [id])
+  user    User    @relation(fields: [user_id], references: [id])
+}
 
-  model DeletedConversation {
-    id              Int      @id @default(autoincrement())
-    conversation_id Int
-    user_id         Int
-    created_at      DateTime @default(now())
+model DeletedConversation {
+  id              Int      @id @default(autoincrement())
+  conversation_id Int
+  user_id         Int
+  created_at      DateTime @default(now())
 
-    conversation Conversation @relation(fields: [conversation_id], references: [id])
-    user         User         @relation(fields: [user_id], references: [id])
-  }
+  conversation Conversation @relation(fields: [conversation_id], references: [id])
+  user         User         @relation(fields: [user_id], references: [id])
+}
 
-  model Report {
-    id             Int          @id @default(autoincrement())
-    user_id        Int
-    participant_id Int
-    report_type    String
-    notes          String?
-    status         ReportStatus @default(PENDING)
-    created_at     DateTime     @default(now())
+model Report {
+  id             Int          @id @default(autoincrement())
+  user_id        Int
+  participant_id Int
+  report_type    String
+  notes          String?
+  status         ReportStatus @default(PENDING)
+  created_at     DateTime     @default(now())
 
-    user User @relation(fields: [user_id], references: [id])
-  }
+  user User @relation(fields: [user_id], references: [id])
+}
 
-  // model Activity {
-  //   id            Int      @id @default(autoincrement())
-  //   activity_type String
-  //   activity_id   Int
-  //   title         String
-  //   detail        String?
-  //   created_at    DateTime @default(now())
-  //   updated_at    DateTime @updatedAt
-  // }
+// model Activity {
+//   id            Int      @id @default(autoincrement())
+//   activity_type String
+//   activity_id   Int
+//   title         String
+//   detail        String?
+//   created_at    DateTime @default(now())
+//   updated_at    DateTime @updatedAt
+// }
 
-  model Friend {
-    id           Int          @id @default(autoincrement())
-    requester_id Int
-    receiver_id  Int
-    status       FriendStatus  
+model Friend {
+  id           Int          @id @default(autoincrement())
+  requester_id Int
+  receiver_id  Int
+  status       FriendStatus
 
-    requester User @relation("UserRequester", fields: [requester_id], references: [id])
-    receiver  User @relation("UserReceiver", fields: [receiver_id], references: [id])
+  requester User @relation("UserRequester", fields: [requester_id], references: [id])
+  receiver  User @relation("UserReceiver", fields: [receiver_id], references: [id])
 
-    created_at DateTime @default(now())
+  created_at DateTime @default(now())
 
-    @@unique([requester_id, receiver_id])
-  }
+  @@unique([requester_id, receiver_id])
+}
 
-  model Story {
-    id         Int      @id @default(autoincrement())
-    user_id    Int
-    content    String
-    created_at DateTime @default(now())
-    updated_at DateTime @updatedAt
-    expires_at DateTime
+model Story {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  content    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  expires_at DateTime
 
-    user User @relation(fields: [user_id], references: [id])
-  }
+  user     User           @relation(fields: [user_id], references: [id])
+  likes    StoryLike[]
+  comments StoryComment[]
+}
 
-  enum MessageType {
-    text
-    image
-    file
-    video
-    call
-  }
+model StoryLike {
+  id         Int      @id @default(autoincrement())
+  story_id   Int
+  user_id    Int
+  created_at DateTime @default(now())
 
-  enum CallStatus {
-    INVITED
-    MISSED
-    ONGOING
-    ENDED
-  }
+  story Story @relation(fields: [story_id], references: [id])
+  user  User  @relation(fields: [user_id], references: [id])
 
-  enum CallType {
-    voice
-    video
-  }
+  @@unique([story_id, user_id]) // prevent duplicate likes
+}
 
-  enum MessageStatus {
-    sent
-    delivered
-    read
-  }
+model StoryComment {
+  id         Int      @id @default(autoincrement())
+  story_id   Int
+  user_id    Int
+  content    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  enum ParticipantType {
-    lead
-    member
-  }
+  story Story @relation(fields: [story_id], references: [id])
+  user  User  @relation(fields: [user_id], references: [id])
+}
 
-  enum DeviceType {
-    APPLE
-  }
+enum MessageType {
+  text
+  image
+  file
+  video
+  call
+}
 
-  enum FriendStatus {
-    PENDING
-    ACCEPTED
-    REJECTED
-  }
+enum CallStatus {
+  INVITED
+  MISSED
+  ONGOING
+  ENDED
+}
 
-  enum ReportStatus {
-    PENDING
-    RESOLVED
-  }
+enum CallType {
+  voice
+  video
+}
+
+enum MessageStatus {
+  sent
+  delivered
+  read
+}
+
+enum ParticipantType {
+  lead
+  member
+}
+
+enum DeviceType {
+  APPLE
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+}
