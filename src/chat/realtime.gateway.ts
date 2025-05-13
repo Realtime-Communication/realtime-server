@@ -39,6 +39,7 @@ export class ChatGateway
 {
   @WebSocketServer()
   private server: Server;
+  private interval: NodeJS.Timeout;
   private wsClients = new Map<string, string>();
 
   constructor(
@@ -48,6 +49,11 @@ export class ChatGateway
     private readonly cacheManager: CacheManager,
     private readonly friendSerivce: FriendsService,
   ) {}
+
+  // @SubscribeMessage('reload')
+  // async reloadDate(client: AuthenticatedSocket, messageDto: MessageDto) {
+  //   this.server.emit("reloadData", {})
+  // }
 
   getTargetSocket = (client: AuthenticatedSocket, messageDto: MessageDto) => {
     if (messageDto.conversationType == ConversationType.FRIEND) {
@@ -222,7 +228,7 @@ export class ChatGateway
         try {
           const payload = this.jwtService.verify(token); // you may need to inject jwtService here
           payload.socketId = socket.id;
-          // payload.firstName 
+          // payload.firstName
           socket.account = payload; // Assign payload to socket
           next();
         } catch (err) {
@@ -248,6 +254,14 @@ export class ChatGateway
     // Set up server configs
     this.server.engine.opts.pingTimeout = 10000;
     this.server.engine.opts.pingInterval = 5000;
+
+    this.interval = setInterval(() => {
+      this.server.emit('timerEvent', { message: 'Ping every 5s' });
+    }, 10000);
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.interval);
   }
 
   async handleDisconnect(client: any) {
