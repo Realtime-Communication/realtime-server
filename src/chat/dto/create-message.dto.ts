@@ -47,7 +47,7 @@ export class MessageDto {
 
   @IsEnum(MessageStatus)
   @IsOptional()
-  status?: MessageStatus = 'sent';
+  status?: MessageStatus = 'SENT';
 
   timestamp: Date;
 

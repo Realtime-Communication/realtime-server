@@ -41,9 +41,9 @@ export class ChatService {
         sender_id: account.id,
         message_type: messageDto.messageType,
         content: messageDto.content || '',
-        call_type: messageDto.callType || CallType.voice,
-        callStatus: messageDto.callStatus || CallStatus.ENDED,
-        status: messageDto.status || MessageStatus.sent,
+        call_type: messageDto.callType || CallType.VOICE,
+        call_status: messageDto.callStatus || CallStatus.ENDED,
+        status: messageDto.status || MessageStatus.SENT,
         attachments: messageDto.attachments
           ? {
               create: messageDto.attachments.map((attachment) => ({
@@ -82,7 +82,7 @@ export class ChatService {
       createdAt: message.created_at,
       deletedAt: message.deleted_at,
       callType: message.call_type,
-      callStatus: message.callStatus,
+      call_status: message.call_status,
       status: message.status,
       user: message.user ? {
         id: message.user.id,
@@ -133,7 +133,7 @@ export class ChatService {
     }
 
     // Check if user is message sender or conversation leader
-    const isLeader = message.conversation.participants[0]?.type === 'lead';
+    const isLeader = message.conversation.participants[0]?.type === 'LEAD';
     const isSender = message.sender_id === account.id;
 
     if (!isLeader && !isSender) {
@@ -216,10 +216,10 @@ export class ChatService {
         guid: crypto.randomUUID(),
         conversation_id: callDto.conversationId,
         sender_id: account.id,
-        message_type: MessageType.call,
-        call_type: CallType.voice,
-        callStatus: CallStatus.INVITED,
-        status: MessageStatus.sent,
+        message_type: MessageType.CALL,
+        call_type: CallType.VOICE,
+        call_status: CallStatus.INVITED,
+        status: MessageStatus.SENT,
       },
       include: {
         user: {
@@ -242,11 +242,11 @@ export class ChatService {
       where: {
         conversation_id: responseDto.conversationId,
         sender_id: account.id,
-        message_type: MessageType.call,
-        callStatus: CallStatus.INVITED,
+        message_type: MessageType.CALL,
+        call_status: CallStatus.INVITED,
       },
       data: {
-        callStatus: CallStatus.ONGOING,
+        call_status: CallStatus.ONGOING,
       },
     });
 
@@ -259,13 +259,13 @@ export class ChatService {
       where: {
         conversation_id: callDto.conversationId,
         sender_id: account.id,
-        message_type: MessageType.call,
-        callStatus: {
+        message_type: MessageType.CALL,
+        call_status: {
           in: [CallStatus.INVITED, CallStatus.ONGOING],
         },
       },
       data: {
-        callStatus: CallStatus.ENDED,
+        call_status: CallStatus.ENDED,
       },
     });
 

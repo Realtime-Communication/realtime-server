@@ -72,6 +72,7 @@ export class FriendsService {
               first_name: true,
               last_name: true,
               email: true,
+              is_active: true,
             },
           },
           receiver: {
@@ -80,6 +81,7 @@ export class FriendsService {
               first_name: true,
               last_name: true,
               email: true,
+              is_active: true,
             },
           },
         },
@@ -90,17 +92,17 @@ export class FriendsService {
           title: `${friend.requester.first_name} ${friend.requester.last_name} and ${friend.receiver.first_name} ${friend.receiver.last_name}`,
           channel_id: account.id + receiver.id,
           creator_id: account.id,
-          avatar_url: "sdfsdfsdfff.com", // NULL DEFAULT
+          avatar_url: 'sdfsdfsdfff.com', // NULL DEFAULT
           participants: {
             createMany: {
               data: [
                 {
                   user_id: account.id,
-                  type: ParticipantType.member,
+                  type: ParticipantType.MEMBER,
                 },
                 {
                   user_id: receiver.id,
-                  type: ParticipantType.member,
+                  type: ParticipantType.MEMBER,
                 },
               ],
             },
@@ -110,9 +112,7 @@ export class FriendsService {
           participants: true,
         },
       });
-      return {
-        ...friend,
-      };
+      return this.toFriendVm(friend);
     });
   }
 
@@ -133,6 +133,7 @@ export class FriendsService {
             first_name: true,
             last_name: true,
             email: true,
+            is_active: true,
           },
         },
         receiver: {
@@ -141,6 +142,7 @@ export class FriendsService {
             first_name: true,
             last_name: true,
             email: true,
+            is_active: true,
           },
         },
       },
@@ -152,7 +154,7 @@ export class FriendsService {
       );
     }
 
-    return await this.prismaService.friend.update({
+    const updatedFriend = await this.prismaService.friend.update({
       where: { id: friendShipRequestId },
       data: { status: FriendStatus.ACCEPTED },
       include: {
@@ -162,6 +164,7 @@ export class FriendsService {
             first_name: true,
             last_name: true,
             email: true,
+            is_active: true,
           },
         },
         receiver: {
@@ -170,10 +173,13 @@ export class FriendsService {
             first_name: true,
             last_name: true,
             email: true,
+            is_active: true,
           },
         },
       },
     });
+
+    return this.toFriendVm(updatedFriend);
   }
 
   async getGroupIds(userId: number): Promise<number[]> {
@@ -265,6 +271,7 @@ export class FriendsService {
               first_name: true,
               last_name: true,
               email: true,
+              is_active: true,
             },
           },
           receiver: {
@@ -273,6 +280,7 @@ export class FriendsService {
               first_name: true,
               last_name: true,
               email: true,
+              is_active: true,
             },
           },
         },
@@ -286,16 +294,170 @@ export class FriendsService {
       }),
     ]);
 
-    const x: FriendVm[] = friends;
-    console.log(x);
-
     return {
-      // cursor: pageable.cursor,
       page: pageable.page,
       size: pageable.size,
       totalPage: Math.ceil(total / pageable.size),
       totalElement: total,
-      result: friends,
+      result: friends.map(friend => this.toFriendVm(friend)),
+    };
+  }
+
+  async findAllAcceptedFriend(
+    account: TAccountRequest,
+    pageable: Pageable,
+  ): Promise<PagedResponse<FriendVm>> {
+    const [friends, total] = await Promise.all([
+      this.prismaService.friend.findMany({
+        where: {
+          OR: [{ requester_id: account.id }, { receiver_id: account.id }],
+          status: FriendStatus.ACCEPTED,
+          ...(pageable.search && {
+            OR: [
+              {
+                requester: {
+                  OR: [
+                    {
+                      first_name: {
+                        contains: pageable.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                    {
+                      last_name: {
+                        contains: pageable.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                receiver: {
+                  OR: [
+                    {
+                      first_name: {
+                        contains: pageable.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                    {
+                      last_name: {
+                        contains: pageable.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+        },
+        include: {
+          requester: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              is_active: true,
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              is_active: true,
+            },
+          },
+        },
+        take: pageable.size,
+        skip: (pageable.page - 1) * pageable.size,
+      }),
+      this.prismaService.friend.count({
+        where: {
+          OR: [{ requester_id: account.id }, { receiver_id: account.id }],
+          status: FriendStatus.ACCEPTED,
+        },
+      }),
+    ]);
+
+    return {
+      page: pageable.page,
+      size: pageable.size,
+      totalPage: Math.ceil(total / pageable.size),
+      totalElement: total,
+      result: friends.map(friend => this.toFriendVm(friend)),
+    };
+  }
+
+  async findAllRequestedFriend(
+    account: TAccountRequest,
+    pageable: Pageable,
+  ): Promise<PagedResponse<FriendVm>> {
+    const [friends, total] = await Promise.all([
+      this.prismaService.friend.findMany({
+        where: {
+          receiver_id: account.id,
+          status: FriendStatus.PENDING,
+          ...(pageable.search && {
+            requester: {
+              OR: [
+                {
+                  first_name: {
+                    contains: pageable.search,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  last_name: {
+                    contains: pageable.search,
+                    mode: 'insensitive',
+                  },
+                },
+              ],
+            },
+          }),
+        },
+        include: {
+          requester: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              is_active: true,
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              is_active: true,
+            },
+          },
+        },
+        take: pageable.size,
+        skip: (pageable.page - 1) * pageable.size,
+      }),
+      this.prismaService.friend.count({
+        where: {
+          receiver_id: account.id,
+          status: FriendStatus.PENDING,
+        },
+      }),
+    ]);
+
+    return {
+      page: pageable.page,
+      size: pageable.size,
+      totalPage: Math.ceil(total / pageable.size),
+      totalElement: total,
+      result: friends.map(friend => this.toFriendVm(friend)),
     };
   }
 
@@ -322,7 +484,7 @@ export class FriendsService {
       );
     }
 
-    return await this.prismaService.friend.update({
+    const updatedFriend = await this.prismaService.friend.update({
       where: { id },
       data: {
         status: updateFriendDto.status,
@@ -334,6 +496,7 @@ export class FriendsService {
             first_name: true,
             last_name: true,
             email: true,
+            is_active: true,
           },
         },
         receiver: {
@@ -342,10 +505,13 @@ export class FriendsService {
             first_name: true,
             last_name: true,
             email: true,
+            is_active: true,
           },
         },
       },
     });
+
+    return this.toFriendVm(updatedFriend);
   }
 
   async remove(account: TAccountRequest, id: number): Promise<void> {
@@ -397,6 +563,30 @@ export class FriendsService {
       throw new NotFoundException('Friend relationship not found');
     }
 
-    return friend;
+    return this.toFriendVm(friend);
+  }
+
+  private toFriendVm(friend: any): FriendVm {
+    return {
+      id: friend.id,
+      requesterId: friend.requester_id,
+      receiverId: friend.receiver_id,
+      status: friend.status,
+      createdAt: friend.created_at,
+      requester: friend.requester && {
+        id: friend.requester.id,
+        firstName: friend.requester.first_name,
+        lastName: friend.requester.last_name,
+        email: friend.requester.email,
+        isActive: friend.requester.is_active,
+      },
+      receiver: friend.receiver && {
+        id: friend.receiver.id,
+        firstName: friend.receiver.first_name,
+        lastName: friend.receiver.last_name,
+        email: friend.receiver.email,
+        isActive: friend.receiver.is_active,
+      },
+    };
   }
 }

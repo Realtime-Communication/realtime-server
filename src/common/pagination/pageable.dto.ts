@@ -3,11 +3,11 @@ import { isNumber, IsNumberString, IsOptional, IsString } from 'class-validator'
 
 export class Pageable {
   @Type(() => Number)
-  page: number = 1;
+  page: number;
 
   @IsOptional()
   @Type(() => Number)
-  size: number = 10;
+  size: number;
 
   @IsOptional()
   @IsString()

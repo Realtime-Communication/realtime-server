@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AccountRole } from '@prisma/client';
 import {
   IsNotEmpty,
   IsString,
@@ -47,4 +48,6 @@ export class CreateUserDto {
 
   @ApiProperty()
   preferences: string;
+
+  role: AccountRole
 }

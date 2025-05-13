@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "AccountRole" AS ENUM ('USER', 'ADMIN');
+
+-- CreateEnum
 CREATE TYPE "MessageType" AS ENUM ('text', 'image', 'file', 'video', 'call');
 
 -- CreateEnum
@@ -37,6 +40,7 @@ CREATE TABLE "User" (
     "preferences" TEXT DEFAULT '',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "role" "AccountRole" NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -74,32 +78,6 @@ CREATE TABLE "UserVerification" (
     "expired_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "UserVerification_pkey" PRIMARY KEY ("user_id")
-);
-
--- CreateTable
-CREATE TABLE "UserContact" (
-    "id" SERIAL NOT NULL,
-    "user_id" INTEGER NOT NULL,
-    "contact_id" INTEGER NOT NULL,
-    "first_name" TEXT NOT NULL DEFAULT '',
-    "last_name" TEXT NOT NULL DEFAULT '',
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "UserContact_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Contact" (
-    "id" SERIAL NOT NULL,
-    "first_name" TEXT NOT NULL DEFAULT '',
-    "middle_name" TEXT DEFAULT '',
-    "last_name" TEXT NOT NULL DEFAULT '',
-    "phone" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "Contact_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -224,6 +202,28 @@ CREATE TABLE "Story" (
     CONSTRAINT "Story_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "StoryLike" (
+    "id" SERIAL NOT NULL,
+    "story_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StoryLike_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoryComment" (
+    "id" SERIAL NOT NULL,
+    "story_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "content" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StoryComment_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
 
@@ -231,13 +231,13 @@ CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserContact_user_id_contact_id_key" ON "UserContact"("user_id", "contact_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Participant_conversation_id_user_id_key" ON "Participant"("conversation_id", "user_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Friend_requester_id_receiver_id_key" ON "Friend"("requester_id", "receiver_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoryLike_story_id_user_id_key" ON "StoryLike"("story_id", "user_id");
 
 -- AddForeignKey
 ALTER TABLE "Device" ADD CONSTRAINT "Device_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -250,12 +250,6 @@ ALTER TABLE "Access" ADD CONSTRAINT "Access_device_id_fkey" FOREIGN KEY ("device
 
 -- AddForeignKey
 ALTER TABLE "UserVerification" ADD CONSTRAINT "UserVerification_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserContact" ADD CONSTRAINT "UserContact_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserContact" ADD CONSTRAINT "UserContact_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "BlockList" ADD CONSTRAINT "BlockList_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -298,3 +292,15 @@ ALTER TABLE "Friend" ADD CONSTRAINT "Friend_receiver_id_fkey" FOREIGN KEY ("rece
 
 -- AddForeignKey
 ALTER TABLE "Story" ADD CONSTRAINT "Story_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoryLike" ADD CONSTRAINT "StoryLike_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "Story"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoryLike" ADD CONSTRAINT "StoryLike_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoryComment" ADD CONSTRAINT "StoryComment_story_id_fkey" FOREIGN KEY ("story_id") REFERENCES "Story"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoryComment" ADD CONSTRAINT "StoryComment_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

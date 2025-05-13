@@ -7,6 +7,14 @@ GROUP ,
 FRIEND
 }
 
+export interface ParticipantUserVm {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isActive: boolean;
+}
+
 export class ConversationVm {
   id: number;
   title: string;
@@ -17,11 +25,12 @@ export class ConversationVm {
   deletedAt?: Date;
   conversationType: ConversationType
   lastMessage: MessageVm
+  avatarUrl?: string;
 
-  participants?: {
+  participants: {
     id: number;
     userId: number;
-    type: 'lead' | 'member';
-    user?: Partial<UserVm>
+    type: 'LEAD' | 'MEMBER';
+    user: ParticipantUserVm;
   }[];
 }

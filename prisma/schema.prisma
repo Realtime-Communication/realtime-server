@@ -9,21 +9,22 @@ generator client {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  phone       String   @unique
-  email       String   @unique
+  id          Int         @id @default(autoincrement())
+  phone       String      @unique
+  email       String      @unique
   password    String
-  first_name  String   @default("")
-  middle_name String?  @default("")
-  last_name   String   @default("")
-  is_active   Boolean  @default(false)
-  is_reported Boolean  @default(false)
-  is_blocked  Boolean  @default(false)
-  preferences String?  @default("")
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  first_name  String      @default("")
+  middle_name String?     @default("")
+  last_name   String      @default("")
+  is_active   Boolean     @default(false)
+  is_reported Boolean     @default(false)
+  is_blocked  Boolean     @default(false)
+  preferences String?     @default("")
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  role        AccountRole
 
-  devices               Device[]
+  // devices               Device[]
   messages              Message[]
   participants          Participant[]
   reports               Report[]
@@ -41,18 +42,18 @@ model User {
   story_comments        StoryComment[]
 }
 
-model Device {
-  id           Int        @id @default(autoincrement())
-  user_id      Int
-  device_id    String
-  device_token String
-  type         DeviceType
-  created_at   DateTime   @default(now())
-  updated_at   DateTime   @updatedAt
+// model Device {
+//   id           Int        @id @default(autoincrement())
+//   user_id      Int
+//   device_id    String
+//   device_token String
+//   type         DeviceType
+//   created_at   DateTime   @default(now())
+//   updated_at   DateTime   @updatedAt
 
-  user     User     @relation(fields: [user_id], references: [id])
-  accesses Access[]
-}
+//   user     User     @relation(fields: [user_id], references: [id])
+//   accesses Access[]
+// }
 
 model Access {
   id         Int       @id @default(autoincrement())
@@ -62,8 +63,8 @@ model Access {
   created_at DateTime  @default(now())
   deleted_at DateTime?
 
-  user   User   @relation(fields: [user_id], references: [id])
-  device Device @relation(fields: [device_id], references: [id])
+  user User @relation(fields: [user_id], references: [id])
+  // device Device @relation(fields: [device_id], references: [id])
 }
 
 model UserVerification {
@@ -113,11 +114,11 @@ model Conversation {
   id         Int       @id @default(autoincrement())
   title      String
   creator_id Int
-  channel_id Int
+  channel_id Int?
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
-  avatar_url String
+  avatar_url String?
 
   messages              Message[]
   participants          Participant[]
@@ -148,7 +149,7 @@ model Message {
   created_at      DateTime      @default(now())
   deleted_at      DateTime?
   call_type       CallType
-  callStatus      CallStatus
+  call_status     CallStatus
   status          MessageStatus
 
   conversation     Conversation     @relation(fields: [conversation_id], references: [id])
@@ -262,12 +263,17 @@ model StoryComment {
   user  User  @relation(fields: [user_id], references: [id])
 }
 
+enum AccountRole {
+  USER
+  ADMIN
+}
+
 enum MessageType {
-  text
-  image
-  file
-  video
-  call
+  TEXT
+  IMAGE
+  FILE
+  VIDEO
+  CALL
 }
 
 enum CallStatus {
@@ -278,19 +284,19 @@ enum CallStatus {
 }
 
 enum CallType {
-  voice
-  video
+  VOICE
+  VIDEOE
 }
 
 enum MessageStatus {
-  sent
-  delivered
-  read
+  SENT
+  DELIVERED
+  READ
 }
 
 enum ParticipantType {
-  lead
-  member
+  LEAD
+  MEMBER
 }
 
 enum DeviceType {

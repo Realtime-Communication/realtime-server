@@ -43,7 +43,7 @@ export class GroupsController {
 
   @Get('/:id/message')
   async getConversationMessages(
-    @Body() queryMessageDto: QueryMessageDto,
+    @Query() queryMessageDto: QueryMessageDto,
     @AccountRequest() account: TAccountRequest,
     @Param('id') id: number,
   ) {

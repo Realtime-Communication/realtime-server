@@ -24,26 +24,87 @@ interface TAccountRequest {
 export class ConversationService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  private async validateParticipants(
+    participants: { userId: number; type: 'LEAD' | 'MEMBER' }[],
+    creatorId: number,
+  ) {
+    // Check for duplicate participants
+    const userIds = new Set([creatorId]);
+    for (const participant of participants) {
+      if (userIds.has(participant.userId)) {
+        throw new BadRequestException('Duplicate participants are not allowed');
+      }
+      userIds.add(participant.userId);
+    }
+
+    // Verify all participants exist and are active
+    const users = await this.prismaService.user.findMany({
+      where: {
+        id: { in: Array.from(userIds) },
+        is_active: true,
+        is_blocked: false,
+      },
+      select: { id: true },
+    });
+
+    if (users.length !== userIds.size) {
+      throw new BadRequestException(
+        'One or more participants are invalid or inactive',
+      );
+    }
+  }
+
   async createConversation(
     createConversationDto: CreateConversationDto,
     account: TAccountRequest,
   ) {
     this.validateCreateConversationRequest(createConversationDto, account);
+
+    // Validate participants
+    await this.validateParticipants(
+      createConversationDto.participants,
+      account.id,
+    );
+
+    // Create conversation with all participants
     return await this.prismaService.conversation.create({
       data: {
         title: createConversationDto.title,
         channel_id: createConversationDto.channelId,
-        creator_id: createConversationDto.creatorId,
-        avatar_url: null, // NULL DEFAULT
+        creator_id: account.id,
+        avatar_url: createConversationDto.avatarUrl,
         participants: {
-          create: {
-            type: ParticipantType.member,
-            user_id: account.id,
-          },
+          create: [
+            // Creator is always a LEAD
+            {
+              type: ParticipantType.LEAD,
+              user_id: account.id,
+            },
+            // Add other participants
+            ...createConversationDto.participants.map((p) => ({
+              type:
+                p.type === 'LEAD'
+                  ? ParticipantType.LEAD
+                  : ParticipantType.MEMBER,
+              user_id: p.userId,
+            })),
+          ],
         },
       },
       include: {
-        participants: true,
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+                is_active: true,
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -51,9 +112,8 @@ export class ConversationService {
   async getConversationMessages(
     account: TAccountRequest,
     query: QueryMessageDto,
-    
   ): Promise<PagedResponse<MessageVm>> {
-let { conversationId, page = 1, size = 10, order = 'desc' } = query;
+    let { conversationId, page = 1, size, order } = query;
     if (!conversationId || isNaN(conversationId)) {
       // Get the most recent conversation
       const recentConversation =
@@ -143,7 +203,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
       createdAt: message.created_at,
       deletedAt: message.deleted_at,
       callType: message.call_type,
-      callStatus: message.callStatus,
+      callStatus: message.call_status,
       status: message.status,
       user: message.user
         ? {
@@ -162,10 +222,57 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
 
     return {
       page,
-      result: mappedMessages,
+      result: mappedMessages.reverse(),
       size: size,
       totalPage: Math.ceil(total / size),
       totalElement: total,
+    };
+  }
+
+  private toConversationVm(conversation: any): ConversationVm {
+    return {
+      id: conversation.id,
+      title: conversation.title,
+      creatorId: conversation.creator_id,
+      channelId: conversation.channel_id,
+      createdAt: conversation.created_at,
+      updatedAt: conversation.updated_at,
+      deletedAt: conversation.deleted_at,
+      avatarUrl: conversation.avatar_url,
+      conversationType: conversation.participants.length === 2
+        ? ConversationType.FRIEND
+        : ConversationType.GROUP,
+      participants: conversation.participants.map((p: any) => ({
+        id: p.id,
+        userId: p.user_id,
+        type: p.type.toLowerCase() as 'LEAD' | 'MEMBER',
+        user: p.user ? {
+          id: p.user.id,
+          firstName: p.user.first_name,
+          lastName: p.user.last_name,
+          email: p.user.email,
+          isActive: p.user.is_active,
+        } : null,
+      })),
+      lastMessage: conversation.messages?.[0] ? {
+        id: conversation.messages[0].id,
+        guid: conversation.messages[0].guid,
+        conversationId: conversation.messages[0].conversation_id,
+        senderId: conversation.messages[0].sender_id,
+        messageType: conversation.messages[0].message_type,
+        content: conversation.messages[0].content,
+        createdAt: conversation.messages[0].created_at,
+        deletedAt: conversation.messages[0].deleted_at,
+        callType: conversation.messages[0].call_type,
+        callStatus: conversation.messages[0].call_status,
+        status: conversation.messages[0].status,
+        user: conversation.messages[0].user ? {
+          id: conversation.messages[0].user.id,
+          firstName: conversation.messages[0].user.first_name,
+          lastName: conversation.messages[0].user.last_name,
+          email: conversation.messages[0].user.email,
+        } : undefined,
+      } : null,
     };
   }
 
@@ -197,6 +304,16 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
           where: { deleted_at: null },
           orderBy: { created_at: 'desc' },
           take: 1,
+          include: {
+            user: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+              },
+            },
+          },
         },
       },
     });
@@ -205,49 +322,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
       throw new NotFoundException('Conversation not found or access denied');
     }
 
-    // Map to ConversationVm
-    const conversationVm: ConversationVm = {
-      id: conversation.id,
-      title: conversation.title,
-      creatorId: conversation.creator_id,
-      channelId: conversation.channel_id,
-      createdAt: conversation.created_at,
-      updatedAt: conversation.updated_at,
-      deletedAt: conversation.deleted_at,
-      conversationType:
-        conversation.participants.length === 2
-          ? ConversationType.FRIEND
-          : ConversationType.GROUP,
-      participants: conversation.participants.map((p) => ({
-        id: p.id,
-        userId: p.user_id,
-        type: p.type.toLowerCase() as 'lead' | 'member',
-        user: {
-          id: p.user.id,
-          firstName: p.user.first_name,
-          lastName: p.user.last_name,
-          email: p.user.email,
-          isActive: p.user.is_active,
-        },
-      })),
-      lastMessage: conversation.messages[0]
-        ? {
-            id: conversation.messages[0].id,
-            guid: conversation.messages[0].guid,
-            conversationId: conversation.messages[0].conversation_id,
-            senderId: conversation.messages[0].sender_id,
-            messageType: conversation.messages[0].message_type,
-            content: conversation.messages[0].content,
-            createdAt: conversation.messages[0].created_at,
-            deletedAt: conversation.messages[0].deleted_at,
-            callType: conversation.messages[0].call_type,
-            callStatus: conversation.messages[0].callStatus,
-            status: conversation.messages[0].status,
-          }
-        : null,
-    };
-
-    return conversationVm;
+    return this.toConversationVm(conversation);
   }
 
   async getConversations(
@@ -255,12 +330,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
     pageable: Pageable,
   ): Promise<PagedResponse<ConversationVm>> {
     const { page = 1, size = 10, search, order = 'desc' } = pageable;
-    if (
-      !Number.isInteger(page) ||
-      page < 1 ||
-      !Number.isInteger(size) ||
-      size < 1
-    ) {
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(size) || size < 1) {
       throw new BadRequestException('Page and size must be positive integers');
     }
     const skip = (page - 1) * size;
@@ -315,54 +385,12 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
       }),
     ]);
 
-    const mappedConversations: ConversationVm[] = conversations.map((conv) => ({
-      id: conv.id,
-      title: conv.title,
-      creatorId: conv.creator_id,
-      channelId: conv.channel_id,
-      createdAt: conv.created_at,
-      updatedAt: conv.updated_at,
-      deletedAt: conv.deleted_at,
-      conversationType:
-        conv.participants.length === 2
-          ? ConversationType.FRIEND
-          : ConversationType.GROUP,
-      participants: conv.participants.map((p) => ({
-        id: p.id,
-        userId: p.user_id,
-        type: p.type.toLowerCase() as 'lead' | 'member',
-      })),
-      lastMessage: conv.messages[0]
-        ? {
-            id: conv.messages[0].id,
-            guid: conv.messages[0].guid,
-            conversationId: conv.messages[0].conversation_id,
-            senderId: conv.messages[0].sender_id,
-            messageType: conv.messages[0].message_type,
-            content: conv.messages[0].content,
-            createdAt: conv.messages[0].created_at,
-            deletedAt: conv.messages[0].deleted_at,
-            callType: conv.messages[0].call_type,
-            callStatus: conv.messages[0].callStatus,
-            status: conv.messages[0].status,
-            user: conv.messages[0].user
-              ? {
-                  id: conv.messages[0].user.id,
-                  firstName: conv.messages[0].user.first_name,
-                  lastName: conv.messages[0].user.last_name,
-                  email: conv.messages[0].user.email,
-                }
-              : undefined,
-          }
-        : null,
-    }));
-
     return {
       page,
       size,
       totalPage: Math.ceil(total / size),
       totalElement: total,
-      result: mappedConversations,
+      result: conversations.map(conv => this.toConversationVm(conv)),
     };
   }
 
@@ -375,7 +403,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
         id: conversationAction.conversationId,
         deleted_at: null,
         participants: {
-          some: { user_id: account.id, type: ParticipantType.lead },
+          some: { user_id: account.id, type: ParticipantType.LEAD },
         },
       },
       include: { participants: true },
@@ -393,7 +421,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
     if (!target) {
       throw new NotFoundException('Target user not found in conversation');
     }
-    if (target.type === ParticipantType.lead) {
+    if (target.type === ParticipantType.LEAD) {
       throw new ForbiddenException('Cannot kick the conversation leader');
     }
 
@@ -410,7 +438,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
         id: conversationAction.conversationId,
         deleted_at: null,
         participants: {
-          some: { user_id: account.id, type: ParticipantType.lead },
+          some: { user_id: account.id, type: ParticipantType.LEAD },
         },
       },
       include: { participants: true },
@@ -445,7 +473,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
       data: {
         conversation_id: conversationAction.conversationId,
         user_id: conversationAction.targetUserId,
-        type: ParticipantType.member,
+        type: ParticipantType.MEMBER,
       },
       include: {
         user: {
@@ -493,7 +521,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
       throw new NotFoundException('You are not a participant');
     }
 
-    const isLeader = participant.type === ParticipantType.lead;
+    const isLeader = participant.type === ParticipantType.LEAD;
     const others = conversation.participants.filter(
       (p) => p.user_id !== account.id,
     );
@@ -504,7 +532,7 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
       );
       await this.prismaService.participant.update({
         where: { id: newLeader.id },
-        data: { type: ParticipantType.lead },
+        data: { type: ParticipantType.LEAD },
       });
     }
 
@@ -538,8 +566,13 @@ let { conversationId, page = 1, size = 10, order = 'desc' } = query;
     if (!createConversationDto.title?.trim()) {
       throw new BadRequestException('Conversation title is required');
     }
-    if (!account?.id || createConversationDto.creatorId !== account.id) {
-      throw new BadRequestException('Invalid account or creator mismatch');
+    // if (!account?.id || createConversationDto.creatorId !== account.id) {
+    //   throw new BadRequestException('Invalid account or creator mismatch');
+    // }
+    if (createConversationDto.participants?.length == 1) {
+      throw new BadRequestException(
+        'At least one participant is required besides the creator',
+      );
     }
   }
 }

@@ -68,11 +68,11 @@ export class ChatGateway
   async messageInGoing(client: AuthenticatedSocket, messageDto: MessageDto) {
     messageDto.timestamp = new Date();
     messageDto.guid = crypto.randomUUID();
-    // this.chatService.saveMessage(client.account, messageDto);
+    this.chatService.saveMessage(client.account, messageDto);
     const tartGetSocket = this.getTargetSocket(client, messageDto);
     messageDto.user = client.account;
     this.server.to(tartGetSocket).emit('messageComing', messageDto);
-    this.server.to(tartGetSocket).emit('loadLastMessage', messageDto);
+    this.server.to(tartGetSocket).emit('loadLastMessage', {});
   }
 
   @SubscribeMessage('typing')
@@ -222,6 +222,7 @@ export class ChatGateway
         try {
           const payload = this.jwtService.verify(token); // you may need to inject jwtService here
           payload.socketId = socket.id;
+          // payload.firstName 
           socket.account = payload; // Assign payload to socket
           next();
         } catch (err) {

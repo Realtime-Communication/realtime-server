@@ -1,20 +1,20 @@
-import { FriendStatus } from "@prisma/client";
+import { FriendStatus } from '@prisma/client';
 
 interface UserInfo {
   id: number;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  is_active?: boolean;
+  isActive?: boolean;
 }
 
 export class FriendVm {
   id: number;
-  requester_id: number;
-  receiver_id: number;
+  requesterId: number;
+  receiverId: number;
   status: FriendStatus;
-  created_at: Date;
+  createdAt: Date;
 
   requester: UserInfo;
-  receiver: UserInfo; 
+  receiver: UserInfo;
 }

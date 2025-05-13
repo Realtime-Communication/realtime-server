@@ -39,6 +39,22 @@ export class FriendsController {
     return this.friendsService.findAll(account, pageable);
   }
 
+  @Get('/requested')
+  async findAllRequestedFriend(
+    @AccountRequest() account: TAccountRequest,
+    @Query() pageable: Pageable,
+  ) {
+    return this.friendsService.findAllRequestedFriend(account, pageable);
+  }
+
+  @Get('/accepted')
+  async findAllAcceptedFriend(
+    @AccountRequest() account: TAccountRequest,
+    @Query() pageable: Pageable,
+  ) {
+    return this.friendsService.findAllAcceptedFriend(account, pageable);
+  }
+
   @Get('/:id')
   async findOne(
     @AccountRequest() account: TAccountRequest,
