@@ -30,7 +30,7 @@ export class AuthService {
     return user !== null && id !== user.id;
   }
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto) {
     if (await this.emailExist(createUserDto.email)) {
       throw new BadRequestException('User email already exists!');
     }
@@ -39,7 +39,7 @@ export class AuthService {
       createUserDto.password,
     );
 
-    return this.prismaService.user.create({
+    const user = await this.prismaService.user.create({
       data: {
         email: createUserDto.email.toLowerCase(),
         password: hashedPassword,
@@ -51,6 +51,17 @@ export class AuthService {
         role: createUserDto.role,
       },
     });
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      phone: user.phone,
+      middleName: user.middle_name,
+      isActive: user.is_active,
+      role: user.role,
+    };
   }
 
   async validateUser(

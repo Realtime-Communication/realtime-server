@@ -34,14 +34,21 @@ import { ConversationModule } from './groups/conversations.module';
 @Module({
   imports: [
     RedisModule.forRootAsync({
-      useFactory: () => ({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
         type: 'single',
         options: {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6379'),
-          password: process.env.REDIS_PASSWORD || 'mypassword', // ✅ ADD THIS
+          host: configService.get('REDIS_HOST', 'redis'),
+          port: parseInt(configService.get('REDIS_PORT', '6379')),
+          password: configService.get('REDIS_PASSWORD', 'mypassword'),
+          retryStrategy: (times: number) => {
+            const delay = Math.min(times * 50, 2000);
+            return delay;
+          },
+          maxRetriesPerRequest: 3,
         },
       }),
+      inject: [ConfigService],
     }),
 
     ConfigModule.forRoot({

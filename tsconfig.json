@@ -5,11 +5,12 @@
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true, // use decorator
+    "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": "./",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -20,5 +21,6 @@
     "noFallthroughCasesInSwitch": false,
     "moduleResolution": "node",
     "types": ["node", "@prisma/client"]
-  }
+  },
+  "exclude": ["node_modules", "dist"]
 }

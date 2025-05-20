@@ -101,42 +101,25 @@ export class ChatGateway
   @SubscribeMessage('callUser')
   async callUser(client: AuthenticatedSocket, callDto: CallDto) {
     try {
-      // const call = await this.chatService.handleCall(client.account, callDto);
+      const members =
+        this.server.sockets.adapter.rooms.get(`group:${callDto.conversationId}`)
+          ?.size || 0;
+      if (members < 2) {
+        client.emit('userNotOnline', {});
+      }
+      callDto.user = client.account;
+      callDto.callerInfomation = client.account;
+      this.server
+        .to(this.getTargetSocket(client, callDto))
+        .except(client.id)
+        .emit('openCall', callDto);
 
-      // const userToCall = await this.cacheManager.getUserSocket(
-      //   callDto.userToCall,
-      // );
-
-      this.server.to(this.getTargetSocket(client, callDto)).emit('open_call', {
-        receiverId: callDto.conversationId,
-        callerInfomation: callDto.user,
-      });
-
-      this.server.to(this.getTargetSocket(client, callDto)).emit('callUser', {
-        receiverId: callDto.conversationId,
-        signal: callDto.signalData,
-        callerInfomation: callDto.user,
-      });
-
-      //  TODO:
-      // this.server.to(client.id).emit('user_not_online', {});
-
-      // if (userToCall) {
-      //   this.server.to(userToCall).emit('open_call', {
-      //     receiver: callDto.,
-      //     callerId: callDto.from,
-      //     callerName: callDto.name,
-      //   });
-
-      //   this.server.to(userToCall).emit('callUser', {
-      //     signal: callDto.signalData,
-      //     from: callDto.from,
-      //     name: callDto.name,
-      //   });
-      // } else {
-      // }
+      this.server
+        .to(this.getTargetSocket(client, callDto))
+        .except(client.id)
+        .emit('callUser', callDto);
     } catch (error) {
-      this.server.to(client.id).emit('call_error', { message: error.message });
+      this.server.to(client.id).emit('callError', { message: error.message });
     }
   }
 
@@ -145,12 +128,13 @@ export class ChatGateway
     try {
       // TODO:
       // await this.chatService.handleCallResponse(client.account, responseDto);
-
+      callDto.user = client.account;
       this.server
         .to(this.getTargetSocket(client, callDto))
+        .except(client.id)
         .emit('callAccepted', callDto);
     } catch (error) {
-      this.server.to(client.id).emit('call_error', { message: error.message });
+      this.server.to(client.id).emit('callError', { message: error.message });
     }
   }
 
@@ -162,38 +146,34 @@ export class ChatGateway
       // const userToCall = await this.cacheManager.getUserSocket(
       //   actionDto.otherId,
       // );
-
+      callDto.user = client.account;
       this.server
         .to(this.getTargetSocket(client, callDto))
         .emit('refuseCall', callDto);
     } catch (error) {
       this.server
         .to(client.account.socketId)
-        .emit('call_error', { message: error.message });
+        .emit('callError', { message: error.message });
     }
   }
 
-  @SubscribeMessage('give_up_call')
+  @SubscribeMessage('giveUpCall')
   async giveUpCall(client: AuthenticatedSocket, callDto: CallDto) {
     try {
-      // await this.chatService.handleCallEnd(client.account, callDto);
-      // const userToCall = await this.cacheManager.getUserSocket(
-      //   actionDto.otherId,
-      // );
+      callDto.user = client.account;
+
       this.server
         .to(this.getTargetSocket(client, callDto))
-        .emit('give_up_call', {});
+        .emit('giveUpCall', {});
 
-      // if (userToCall) {
-      // }
     } catch (error) {
       this.server
-        .to(client.account.socketId)
-        .emit('call_error', { message: error.message });
+        .to(client.id)
+        .emit('callError', { message: error.message });
     }
   }
 
-  @SubscribeMessage('close_call')
+  @SubscribeMessage('closeCall')
   async closeCall(client: AuthenticatedSocket, callDto: CallDto) {
     try {
       // await this.chatService.handleCallEnd(client.account, actionDto);
@@ -203,17 +183,17 @@ export class ChatGateway
 
       this.server
         .to(this.getTargetSocket(client, callDto))
-        .emit('close_call', {});
+        .emit('closeCall', {});
     } catch (error) {
       this.server
-        .to(client.account.socketId)
-        .emit('call_error', { message: error.message });
+        .to(client.id)
+        .emit('callError', { message: error.message });
     }
   }
 
-  @SubscribeMessage('complete_close_call')
+  @SubscribeMessage('completeCloseCall')
   async completeCloseCall(client: AuthenticatedSocket) {
-    this.server.to(client.account.socketId).emit('complete_close_call', {});
+    this.server.to(client.id).emit('completeCloseCall', {});
   }
 
   async afterInit(server: Server) {
@@ -255,9 +235,9 @@ export class ChatGateway
     this.server.engine.opts.pingTimeout = 10000;
     this.server.engine.opts.pingInterval = 5000;
 
-    this.interval = setInterval(() => {
-      this.server.emit('timerEvent', { message: 'Ping every 5s' });
-    }, 10000);
+    // this.interval = setInterval(() => {
+    //   this.server.emit('timerEvent', { message: 'Ping every 5s' });
+    // }, 10000);
   }
 
   onModuleDestroy() {
@@ -282,6 +262,7 @@ export class ChatGateway
     const sockethandleConnectionId = client.id;
 
     await this.cacheManager.addUserSocket(userId, sockethandleConnectionId);
+    client.join('-1');
 
     const friendIds: number[] = await this.friendSerivce.getFriendIds(userId);
     const groupIds: number[] = await this.friendSerivce.getGroupIds(userId);

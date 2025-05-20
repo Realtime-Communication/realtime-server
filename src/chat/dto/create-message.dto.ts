@@ -12,7 +12,7 @@ import {
   MessageType,
 } from '@prisma/client';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
-import { ConversationType } from 'src/groups/model/conversation.vm';
+import { ConversationType, ConversationVm } from 'src/groups/model/conversation.vm';
 
 export enum TargetType {
   ROOM,
@@ -29,7 +29,6 @@ export class MessageDto {
   @IsNotEmpty()
   conversationType: ConversationType;
 
-  @IsEnum(MessageType)
   @IsNotEmpty()
   messageType: MessageType;
 
@@ -37,19 +36,16 @@ export class MessageDto {
   @IsOptional()
   content?: string;
 
-  @IsEnum(CallType)
   @IsOptional()
   callType?: CallType;
 
-  @IsEnum(CallStatus)
   @IsOptional()
   callStatus?: CallStatus;
 
-  @IsEnum(MessageStatus)
   @IsOptional()
   status?: MessageStatus = 'SENT';
 
-  timestamp: Date;
+  timestamp?: Date;
 
   @IsOptional()
   attachments?: {
@@ -64,14 +60,19 @@ export class CallDto extends MessageDto {
   // @IsInt()
   // @IsNotEmpty()
   // from: number;
+  conversation?: ConversationVm;
+
+  callerInfomation: TAccountRequest;
 
   @IsString()
   @IsNotEmpty()
-  signalData: string;
+  signal?: string;
 }
 
 export class CallResponseDto extends MessageDto {
   @IsString()
   @IsNotEmpty()
-  signal: string;
+  signal?: string;
+
+  conversation?: ConversationVm;
 }

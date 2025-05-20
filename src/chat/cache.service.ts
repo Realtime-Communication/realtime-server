@@ -10,10 +10,23 @@ export class CacheManager {
 
   constructor(private readonly configService: ConfigService) {
     this.redis = new Redis({
-      host: this.configService.get('REDIS_HOST', 'localhost'),
+      host: this.configService.get('REDIS_HOST', 'redis'),
       port: this.configService.get('REDIS_PORT', 6379),
-      password: this.configService.get('REDIS_PASSWORD'),
+      password: this.configService.get('REDIS_PASSWORD', 'mypassword'),
       keyPrefix: this.keyPrefix,
+      retryStrategy: (times: number) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      },
+      maxRetriesPerRequest: 3,
+    });
+
+    this.redis.on('error', (err) => {
+      console.error('Redis Cache Manager Error:', err);
+    });
+
+    this.redis.on('connect', () => {
+      console.log('Redis Cache Manager Connected');
     });
   }
 
