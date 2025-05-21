@@ -1,44 +1,50 @@
-# Use Node.js 22
+# ----------- Development Build Stage -----------
 FROM node:22-alpine AS builder
 
+# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Install dependencies
 COPY package*.json ./
-
-# Install dependencies including dev dependencies
 RUN npm install
 
-# Copy source code and prisma schema
+# Copy all source code and Prisma files
 COPY . .
 
-# Set environment variables for Prisma
+# Set Prisma environment variables for client generation
 ENV DATABASE_URL="postgres://admin:adminpassword@postgres:5432/main_db"
 ENV PRISMA_CLIENT_ENGINE_TYPE="binary"
 
-# Generate Prisma Client
+# Generate Prisma client based on schema
 RUN npx prisma generate
 
-# Build the application with explicit commands
+# Build TypeScript application
 RUN npm run build || (echo "Build failed" && ls -la && exit 1)
 
-# Production stage
-FROM node:22-alpine
+
+# ----------- Production Runtime Stage -----------
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
-# Copy built assets from builder
+# Copy only necessary files from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules ./
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Install production dependencies only
-RUN npm install --only=production
+# Install only production dependencies
+RUN npm install --omit=dev
 
-# Expose the port the app runs on
+# Install Prisma CLI for running migrations in production
+RUN npm install -g prisma
+
+# Set environment variables (can also be passed via docker-compose or --env-file)
+ENV DATABASE_URL="postgres://admin:adminpassword@postgres:5432/main_db"
+
+# Expose the application port
 EXPOSE 8080
 
-# Command to run the application with correct path
-CMD ["node", "dist/src/main"]
-
+# Run migrations and start the app
+CMD prisma migrate deploy && node dist/src/main
