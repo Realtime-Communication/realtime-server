@@ -26,25 +26,25 @@ export class CreateUserDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
-  first_name: string;
+  firstName: string;
 
   @ApiProperty()
   @IsString()
-  middle_name: string;
+  middleName: string;
 
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
-  last_name: string;
+  lastName: string;
 
   @ApiProperty()
-  is_active: boolean;
+  isActive: boolean;
 
   @ApiProperty()
-  is_reported: boolean;
+  isReported: boolean;
 
   @ApiProperty()
-  is_blocked: boolean;
+  isBlocked: boolean;
 
   @ApiProperty()
   preferences: string;

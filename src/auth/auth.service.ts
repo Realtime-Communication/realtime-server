@@ -43,10 +43,10 @@ export class AuthService {
       data: {
         email: createUserDto.email.toLowerCase(),
         password: hashedPassword,
-        first_name: createUserDto.first_name,
-        last_name: createUserDto.last_name,
+        first_name: createUserDto.firstName,
+        last_name: createUserDto.lastName,
         phone: createUserDto.phone,
-        middle_name: createUserDto.middle_name,
+        middle_name: createUserDto.middleName,
         is_active: true,
         role: createUserDto.role,
       },

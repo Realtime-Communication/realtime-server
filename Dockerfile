@@ -21,7 +21,6 @@ RUN npx prisma generate
 # Build TypeScript application
 RUN npm run build || (echo "Build failed" && ls -la && exit 1)
 
-
 # ----------- Production Runtime Stage -----------
 FROM node:22-alpine AS production
 
