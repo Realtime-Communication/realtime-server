@@ -2,28 +2,34 @@
 CREATE TYPE "AccountRole" AS ENUM ('USER', 'ADMIN');
 
 -- CreateEnum
-CREATE TYPE "MessageType" AS ENUM ('text', 'image', 'file', 'video', 'call');
+CREATE TYPE "MessageType" AS ENUM ('TEXT', 'IMAGE', 'FILE', 'VIDEO', 'CALL');
+
+-- CreateEnum
+CREATE TYPE "VerificationType" AS ENUM ('AUTHENTICATION', 'CHANGE_PASSWORD');
 
 -- CreateEnum
 CREATE TYPE "CallStatus" AS ENUM ('INVITED', 'MISSED', 'ONGOING', 'ENDED');
 
 -- CreateEnum
-CREATE TYPE "CallType" AS ENUM ('voice', 'video');
+CREATE TYPE "CallType" AS ENUM ('VOICE', 'VIDEO');
 
 -- CreateEnum
-CREATE TYPE "MessageStatus" AS ENUM ('sent', 'delivered', 'read');
+CREATE TYPE "MessageStatus" AS ENUM ('SENT', 'DELIVERED', 'READ');
 
 -- CreateEnum
-CREATE TYPE "ParticipantType" AS ENUM ('lead', 'member');
+CREATE TYPE "ParticipantType" AS ENUM ('LEAD', 'MEMBER');
 
 -- CreateEnum
-CREATE TYPE "DeviceType" AS ENUM ('APPLE');
+CREATE TYPE "DeviceType" AS ENUM ('IOS', 'ANDROID', 'WEB');
 
 -- CreateEnum
 CREATE TYPE "FriendStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'RESOLVED');
+CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'RESOLVED', 'REJECTED');
+
+-- CreateEnum
+CREATE TYPE "ParticipantStatus" AS ENUM ('VERIFIED', 'UNVERIFIED');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -31,16 +37,17 @@ CREATE TABLE "User" (
     "phone" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "first_name" TEXT NOT NULL DEFAULT '',
-    "middle_name" TEXT DEFAULT '',
-    "last_name" TEXT NOT NULL DEFAULT '',
-    "is_active" BOOLEAN NOT NULL DEFAULT false,
-    "is_reported" BOOLEAN NOT NULL DEFAULT false,
+    "role" "AccountRole" NOT NULL,
     "is_blocked" BOOLEAN NOT NULL DEFAULT false,
-    "preferences" TEXT DEFAULT '',
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "first_name" TEXT NOT NULL DEFAULT '',
+    "middle_name" TEXT,
+    "last_name" TEXT NOT NULL DEFAULT '',
+    "preferences" TEXT,
+    "level_left" INTEGER,
+    "level_right" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "role" "AccountRole" NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -48,8 +55,7 @@ CREATE TABLE "User" (
 -- CreateTable
 CREATE TABLE "Device" (
     "id" SERIAL NOT NULL,
-    "user_id" INTEGER NOT NULL,
-    "device_id" TEXT NOT NULL,
+    "device_code" TEXT NOT NULL,
     "device_token" TEXT NOT NULL,
     "type" "DeviceType" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -66,6 +72,7 @@ CREATE TABLE "Access" (
     "token" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
+    "is_deleted" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Access_pkey" PRIMARY KEY ("id")
 );
@@ -76,6 +83,7 @@ CREATE TABLE "UserVerification" (
     "verification_code" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL,
     "expired_at" TIMESTAMP(3) NOT NULL,
+    "type" "VerificationType" NOT NULL,
 
     CONSTRAINT "UserVerification_pkey" PRIMARY KEY ("user_id")
 );
@@ -112,6 +120,8 @@ CREATE TABLE "Participant" (
     "type" "ParticipantType" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "status" "ParticipantStatus" NOT NULL DEFAULT 'UNVERIFIED',
+    "verified_by" SERIAL,
 
     CONSTRAINT "Participant_pkey" PRIMARY KEY ("id")
 );
@@ -127,8 +137,8 @@ CREATE TABLE "Message" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
     "call_type" "CallType" NOT NULL,
-    "callStatus" "CallStatus" NOT NULL,
-    "status" "MessageStatus" NOT NULL,
+    "call_status" "CallStatus" NOT NULL,
+    "message_status" "MessageStatus" NOT NULL,
 
     CONSTRAINT "Message_pkey" PRIMARY KEY ("id")
 );
@@ -175,6 +185,7 @@ CREATE TABLE "Report" (
     "notes" TEXT,
     "status" "ReportStatus" NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "rejected_reason" TEXT,
 
     CONSTRAINT "Report_pkey" PRIMARY KEY ("id")
 );
@@ -240,9 +251,6 @@ CREATE UNIQUE INDEX "Friend_requester_id_receiver_id_key" ON "Friend"("requester
 CREATE UNIQUE INDEX "StoryLike_story_id_user_id_key" ON "StoryLike"("story_id", "user_id");
 
 -- AddForeignKey
-ALTER TABLE "Device" ADD CONSTRAINT "Device_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Access" ADD CONSTRAINT "Access_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -255,10 +263,16 @@ ALTER TABLE "UserVerification" ADD CONSTRAINT "UserVerification_user_id_fkey" FO
 ALTER TABLE "BlockList" ADD CONSTRAINT "BlockList_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Participant" ADD CONSTRAINT "Participant_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "BlockList" ADD CONSTRAINT "BlockList_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Participant" ADD CONSTRAINT "Participant_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "Conversation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Participant" ADD CONSTRAINT "Participant_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "Conversation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -283,6 +297,9 @@ ALTER TABLE "DeletedConversation" ADD CONSTRAINT "DeletedConversation_user_id_fk
 
 -- AddForeignKey
 ALTER TABLE "Report" ADD CONSTRAINT "Report_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Report" ADD CONSTRAINT "Report_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Friend" ADD CONSTRAINT "Friend_requester_id_fkey" FOREIGN KEY ("requester_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -1,11 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider     = "postgresql"
   url          = env("DATABASE_URL")
   relationMode = "foreignKeys"
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -13,47 +13,52 @@ model User {
   phone       String      @unique
   email       String      @unique
   password    String
-  first_name  String      @default("")
-  middle_name String?     @default("")
-  last_name   String      @default("")
-  is_active   Boolean     @default(false)
-  is_reported Boolean     @default(false)
+  role        AccountRole
   is_blocked  Boolean     @default(false)
-  preferences String?     @default("")
+  is_active   Boolean     @default(true)
+
+  // Personal information
+  first_name  String      @default("")
+  middle_name String?
+  last_name   String      @default("")
+  preferences String?
+
+  // Admin information
+  level_left  Int? // Only for admin users
+  level_right Int? // Only for admin users
   created_at  DateTime    @default(now())
   updated_at  DateTime    @updatedAt
-  role        AccountRole
 
-  // devices               Device[]
-  messages              Message[]
-  participants          Participant[]
-  reports               Report[]
-  deleted_messages      DeletedMessage[]
-  deleted_conversations DeletedConversation[]
-  accesses              Access[]
-  // user_contacts         UserContact[]         @relation("UserContacts")
-  // contacts              UserContact[]         @relation("ContactRelation")
-  block_lists           BlockList[]
-  user_verification     UserVerification?
-  stories               Story[]
-  friends_requested     Friend[]              @relation("UserRequester")
-  friends_received      Friend[]              @relation("UserReceiver")
-  story_likes           StoryLike[]
-  story_comments        StoryComment[]
+  // Relations
+  accesses                 Access[]
+  verification             UserVerification?
+  blocked_users            BlockList[]           @relation("UserBlocks")
+  blocked_by_users         BlockList[]           @relation("UserBlockedBy")
+  participants             Participant[]
+  sent_messages            Message[]
+  deleted_messages         DeletedMessage[]
+  deleted_conversations    DeletedConversation[]
+  reports_made             Report[]              @relation("UserReports")
+  reports_received         Report[]              @relation("UserReported")
+  friend_requests_sent     Friend[]              @relation("FriendRequester")
+  friend_requests_received Friend[]              @relation("FriendReceiver")
+  stories                  Story[]
+  story_likes              StoryLike[]
+  story_comments           StoryComment[]
+  created_conversations    Conversation[]
 }
 
-// model Device {
-//   id           Int        @id @default(autoincrement())
-//   user_id      Int
-//   device_id    String
-//   device_token String
-//   type         DeviceType
-//   created_at   DateTime   @default(now())
-//   updated_at   DateTime   @updatedAt
+model Device {
+  id           Int        @id @default(autoincrement())
+  device_code  String
+  device_token String
+  type         DeviceType
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
 
-//   user     User     @relation(fields: [user_id], references: [id])
-//   accesses Access[]
-// }
+  // Relations
+  accesses Access[]
+}
 
 model Access {
   id         Int       @id @default(autoincrement())
@@ -62,44 +67,23 @@ model Access {
   token      String
   created_at DateTime  @default(now())
   deleted_at DateTime?
+  is_deleted Boolean   @default(false)
 
-  user User @relation(fields: [user_id], references: [id])
-  // device Device @relation(fields: [device_id], references: [id])
+  // Relations
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  device Device @relation(fields: [device_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
 model UserVerification {
-  user_id           Int      @id @default(autoincrement())
+  user_id           Int              @id @default(autoincrement())
   verification_code String
   created_at        DateTime
   expired_at        DateTime
+  type              VerificationType
 
-  user User @relation(fields: [user_id], references: [id])
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
-
-// model UserContact {
-//   id         Int      @id @default(autoincrement())
-//   user_id    Int
-//   contact_id Int
-//   first_name String   @default("")
-//   last_name  String   @default("")
-//   created_at DateTime @default(now())
-//   updated_at DateTime @updatedAt
-
-//   user    User @relation("UserContacts", fields: [user_id], references: [id])
-//   contact User @relation("ContactRelation", fields: [contact_id], references: [id])
-
-//   @@unique([user_id, contact_id])
-// }
-
-// model Contact {
-//   id          Int      @id @default(autoincrement())
-//   first_name  String   @default("")
-//   middle_name String?  @default("")
-//   last_name   String   @default("")
-//   phone       String
-//   email       String
-//   created_at  DateTime @default(now())
-// }
 
 model BlockList {
   id             Int      @id @default(autoincrement())
@@ -107,41 +91,48 @@ model BlockList {
   participant_id Int
   created_at     DateTime @default(now())
 
-  user User @relation(fields: [user_id], references: [id])
+  // Relations
+  user        User @relation("UserBlocks", fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  participant User @relation("UserBlockedBy", fields: [participant_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
 model Conversation {
   id         Int       @id @default(autoincrement())
   title      String
   creator_id Int
-  channel_id Int?
+  channel_id Int
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
-  avatar_url String?
+  avatar_url String
 
-  messages              Message[]
+  // Relations
+  creator               User                  @relation(fields: [creator_id], references: [id])
   participants          Participant[]
+  messages              Message[]
   deleted_conversations DeletedConversation[]
 }
 
 model Participant {
-  id              Int             @id @default(autoincrement())
+  id              Int               @id @default(autoincrement())
   conversation_id Int
   user_id         Int
   type            ParticipantType
-  created_at      DateTime        @default(now())
-  updated_at      DateTime        @updatedAt
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  status          ParticipantStatus @default(UNVERIFIED)
+  verified_by     Int?              @default(autoincrement())
 
-  user         User         @relation(fields: [user_id], references: [id])
-  conversation Conversation @relation(fields: [conversation_id], references: [id])
+  // Relations
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([conversation_id, user_id])
 }
 
 model Message {
   id              Int           @id @default(autoincrement())
-  guid            String        @default(uuid())
+  guid            String
   conversation_id Int
   sender_id       Int
   message_type    MessageType
@@ -150,10 +141,11 @@ model Message {
   deleted_at      DateTime?
   call_type       CallType
   call_status     CallStatus
-  status          MessageStatus
+  message_status  MessageStatus
 
-  conversation     Conversation     @relation(fields: [conversation_id], references: [id])
-  user             User             @relation(fields: [sender_id], references: [id])
+  // Relations
+  conversation     Conversation     @relation(fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sender           User             @relation(fields: [sender_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
   attachments      Attachment[]
   deleted_messages DeletedMessage[]
 }
@@ -166,7 +158,8 @@ model Attachment {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  message Message @relation(fields: [message_id], references: [id])
+  // Relations
+  message Message @relation(fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
 model DeletedMessage {
@@ -176,8 +169,9 @@ model DeletedMessage {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  message Message @relation(fields: [message_id], references: [id])
-  user    User    @relation(fields: [user_id], references: [id])
+  // Relations
+  message Message @relation(fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
 model DeletedConversation {
@@ -186,42 +180,36 @@ model DeletedConversation {
   user_id         Int
   created_at      DateTime @default(now())
 
-  conversation Conversation @relation(fields: [conversation_id], references: [id])
-  user         User         @relation(fields: [user_id], references: [id])
+  // Relations
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
 model Report {
-  id             Int          @id @default(autoincrement())
-  user_id        Int
-  participant_id Int
-  report_type    String
-  notes          String?
-  status         ReportStatus @default(PENDING)
-  created_at     DateTime     @default(now())
+  id              Int          @id @default(autoincrement())
+  user_id         Int
+  participant_id  Int
+  report_type     String
+  notes           String?
+  status          ReportStatus @default(PENDING)
+  created_at      DateTime     @default(now())
+  rejected_reason String?
 
-  user User @relation(fields: [user_id], references: [id])
+  // Relations
+  user        User @relation("UserReports", fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  participant User @relation("UserReported", fields: [participant_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
-
-// model Activity {
-//   id            Int      @id @default(autoincrement())
-//   activity_type String
-//   activity_id   Int
-//   title         String
-//   detail        String?
-//   created_at    DateTime @default(now())
-//   updated_at    DateTime @updatedAt
-// }
 
 model Friend {
   id           Int          @id @default(autoincrement())
   requester_id Int
   receiver_id  Int
   status       FriendStatus
+  created_at   DateTime     @default(now())
 
-  requester User @relation("UserRequester", fields: [requester_id], references: [id])
-  receiver  User @relation("UserReceiver", fields: [receiver_id], references: [id])
-
-  created_at DateTime @default(now())
+  // Relations
+  requester User @relation("FriendRequester", fields: [requester_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  receiver  User @relation("FriendReceiver", fields: [receiver_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([requester_id, receiver_id])
 }
@@ -234,7 +222,8 @@ model Story {
   updated_at DateTime @updatedAt
   expires_at DateTime
 
-  user     User           @relation(fields: [user_id], references: [id])
+  // Relations
+  user     User           @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
   likes    StoryLike[]
   comments StoryComment[]
 }
@@ -245,10 +234,11 @@ model StoryLike {
   user_id    Int
   created_at DateTime @default(now())
 
-  story Story @relation(fields: [story_id], references: [id])
-  user  User  @relation(fields: [user_id], references: [id])
+  // Relations
+  story Story @relation(fields: [story_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  @@unique([story_id, user_id]) // prevent duplicate likes
+  @@unique([story_id, user_id])
 }
 
 model StoryComment {
@@ -259,8 +249,9 @@ model StoryComment {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  story Story @relation(fields: [story_id], references: [id])
-  user  User  @relation(fields: [user_id], references: [id])
+  // Relations
+  story Story @relation(fields: [story_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
 enum AccountRole {
@@ -276,6 +267,11 @@ enum MessageType {
   CALL
 }
 
+enum VerificationType {
+  AUTHENTICATION
+  CHANGE_PASSWORD
+}
+
 enum CallStatus {
   INVITED
   MISSED
@@ -285,7 +281,7 @@ enum CallStatus {
 
 enum CallType {
   VOICE
-  VIDEOE
+  VIDEO
 }
 
 enum MessageStatus {
@@ -300,7 +296,9 @@ enum ParticipantType {
 }
 
 enum DeviceType {
-  APPLE
+  IOS
+  ANDROID
+  WEB
 }
 
 enum FriendStatus {
@@ -312,4 +310,11 @@ enum FriendStatus {
 enum ReportStatus {
   PENDING
   RESOLVED
+  REJECTED
+}
+
+enum ParticipantStatus {
+  VERIFIED
+  UNVERIFIED
+  REJECTED
 }

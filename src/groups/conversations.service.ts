@@ -6,19 +6,20 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateConversationDto } from './model/create-conversation.dto';
-import { Conversation, Message, ParticipantType } from '@prisma/client';
+import {
+  Conversation,
+  Message,
+  ParticipantStatus,
+  ParticipantType,
+} from '@prisma/client';
 import { QueryMessageDto } from './model/query-message.dto';
 import { PagedResponse } from 'src/common/pagination/paged.vm';
 import { MessageVm } from 'src/chat/dto/message.vm';
 import { Pageable } from 'src/common/pagination/pageable.dto';
 import { ConversationVm, ConversationType } from './model/conversation.vm';
 import { ConversationActionDto } from './model/action-conversation.dto';
-
-// Define TAccountRequest interface if not already defined elsewhere
-interface TAccountRequest {
-  id: number;
-  [key: string]: any;
-}
+import { ConversationActionType } from './model/action.enum';
+import { TAccountRequest } from 'src/decorators/account-request.decorator';
 
 @Injectable()
 export class ConversationService {
@@ -79,6 +80,7 @@ export class ConversationService {
             {
               type: ParticipantType.LEAD,
               user_id: account.id,
+              status: ParticipantStatus.VERIFIED,
             },
             // Add other participants
             ...createConversationDto.participants.map((p) => ({
@@ -87,6 +89,7 @@ export class ConversationService {
                   ? ParticipantType.LEAD
                   : ParticipantType.MEMBER,
               user_id: p.userId,
+              status: ParticipantStatus.VERIFIED,
             })),
           ],
         },
@@ -158,7 +161,7 @@ export class ConversationService {
         take: size,
         orderBy: { created_at: order === 'asc' ? 'asc' : 'desc' },
         include: {
-          user: {
+          sender: {
             select: {
               id: true,
               first_name: true,
@@ -204,13 +207,13 @@ export class ConversationService {
       deletedAt: message.deleted_at,
       callType: message.call_type,
       callStatus: message.call_status,
-      status: message.status,
-      user: message.user
+      status: message.message_status,
+      user: message.sender
         ? {
-            id: message.user.id,
-            firstName: message.user.first_name,
-            lastName: message.user.last_name,
-            email: message.user.email,
+            id: message.sender.id,
+            firstName: message.sender.first_name,
+            lastName: message.sender.last_name,
+            email: message.sender.email,
           }
         : undefined,
       attachments: message.attachments?.map((att) => ({
@@ -239,40 +242,47 @@ export class ConversationService {
       updatedAt: conversation.updated_at,
       deletedAt: conversation.deleted_at,
       avatarUrl: conversation.avatar_url,
-      conversationType: conversation.participants.length === 2
-        ? ConversationType.FRIEND
-        : ConversationType.GROUP,
+      conversationType:
+        conversation.participants.length === 2
+          ? ConversationType.FRIEND
+          : ConversationType.GROUP,
       participants: conversation.participants.map((p: any) => ({
         id: p.id,
         userId: p.user_id,
         type: p.type.toLowerCase() as 'LEAD' | 'MEMBER',
-        user: p.user ? {
-          id: p.user.id,
-          firstName: p.user.first_name,
-          lastName: p.user.last_name,
-          email: p.user.email,
-          isActive: p.user.is_active,
-        } : null,
+        user: p.user
+          ? {
+              id: p.user.id,
+              firstName: p.user.first_name,
+              lastName: p.user.last_name,
+              email: p.user.email,
+              isActive: p.user.is_active,
+            }
+          : null,
       })),
-      lastMessage: conversation.messages?.[0] ? {
-        id: conversation.messages[0].id,
-        guid: conversation.messages[0].guid,
-        conversationId: conversation.messages[0].conversation_id,
-        senderId: conversation.messages[0].sender_id,
-        messageType: conversation.messages[0].message_type,
-        content: conversation.messages[0].content,
-        createdAt: conversation.messages[0].created_at,
-        deletedAt: conversation.messages[0].deleted_at,
-        callType: conversation.messages[0].call_type,
-        callStatus: conversation.messages[0].call_status,
-        status: conversation.messages[0].status,
-        user: conversation.messages[0].user ? {
-          id: conversation.messages[0].user.id,
-          firstName: conversation.messages[0].user.first_name,
-          lastName: conversation.messages[0].user.last_name,
-          email: conversation.messages[0].user.email,
-        } : undefined,
-      } : null,
+      lastMessage: conversation.messages?.[0]
+        ? {
+            id: conversation.messages[0].id,
+            guid: conversation.messages[0].guid,
+            conversationId: conversation.messages[0].conversation_id,
+            senderId: conversation.messages[0].sender_id,
+            messageType: conversation.messages[0].message_type,
+            content: conversation.messages[0].content,
+            createdAt: conversation.messages[0].created_at,
+            deletedAt: conversation.messages[0].deleted_at,
+            callType: conversation.messages[0].call_type,
+            callStatus: conversation.messages[0].call_status,
+            status: conversation.messages[0].message_status,
+            user: conversation.messages[0].user
+              ? {
+                  id: conversation.messages[0].user.id,
+                  firstName: conversation.messages[0].user.first_name,
+                  lastName: conversation.messages[0].user.last_name,
+                  email: conversation.messages[0].user.email,
+                }
+              : undefined,
+          }
+        : null,
     };
   }
 
@@ -305,7 +315,7 @@ export class ConversationService {
           orderBy: { created_at: 'desc' },
           take: 1,
           include: {
-            user: {
+            sender: {
               select: {
                 id: true,
                 first_name: true,
@@ -330,7 +340,12 @@ export class ConversationService {
     pageable: Pageable,
   ): Promise<PagedResponse<ConversationVm>> {
     const { page = 1, size = 10, search, order = 'desc' } = pageable;
-    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(size) || size < 1) {
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      !Number.isInteger(size) ||
+      size < 1
+    ) {
       throw new BadRequestException('Page and size must be positive integers');
     }
     const skip = (page - 1) * size;
@@ -364,7 +379,7 @@ export class ConversationService {
             orderBy: { created_at: 'desc' },
             take: 1,
             include: {
-              user: {
+              sender: {
                 select: {
                   id: true,
                   first_name: true,
@@ -390,7 +405,7 @@ export class ConversationService {
       size,
       totalPage: Math.ceil(total / size),
       totalElement: total,
-      result: conversations.map(conv => this.toConversationVm(conv)),
+      result: conversations.map((conv) => this.toConversationVm(conv)),
     };
   }
 
@@ -574,5 +589,165 @@ export class ConversationService {
         'At least one participant is required besides the creator',
       );
     }
+  }
+
+  async joinConversation(
+    account: TAccountRequest,
+    {
+      conversationId,
+      actionType,
+    }: { conversationId: number; actionType: ConversationActionType },
+  ): Promise<{ success: boolean; message: string; participant: any }> {
+    // Verify the conversation exists and is not deleted
+    const conversation = await this.prismaService.conversation.findFirst({
+      where: {
+        id: conversationId,
+        deleted_at: null,
+      },
+      include: {
+        participants: true,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // Check if user is already a participant
+    const existingParticipant = conversation.participants.find(
+      (p) => p.user_id === account.id,
+    );
+
+    if (existingParticipant) {
+      throw new BadRequestException(
+        'You are already a participant in this conversation',
+      );
+    }
+
+    // Verify the user is active
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        id: account.id,
+        is_active: true,
+        is_blocked: false,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Your account is inactive or blocked');
+    }
+
+    // Create new participant with UNVERIFIED status
+    const newParticipant = await this.prismaService.participant.create({
+      data: {
+        conversation_id: conversationId,
+        user_id: account.id,
+        type: ParticipantType.MEMBER,
+        status: ParticipantStatus.UNVERIFIED,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            is_active: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Join request sent successfully',
+      participant: newParticipant,
+    };
+  }
+
+  async approveJoinConversation(
+    account: TAccountRequest,
+    {
+      conversationId,
+      targetUserId,
+      actionType,
+    }: {
+      conversationId: number;
+      targetUserId: number;
+      actionType: ConversationActionType;
+    },
+  ): Promise<{ success: boolean; message: string; participant: any }> {
+    // First verify that the approver (account) is a LEAD of the conversation
+    const approverParticipant = await this.prismaService.participant.findFirst({
+      where: {
+        conversation_id: conversationId,
+        user_id: account.id,
+        type: ParticipantType.LEAD,
+      },
+    });
+
+    if (!approverParticipant) {
+      throw new ForbiddenException(
+        'Only conversation leaders can approve join requests',
+      );
+    }
+
+    // Verify the conversation exists and is not deleted
+    const conversation = await this.prismaService.conversation.findFirst({
+      where: {
+        id: conversationId,
+        deleted_at: null,
+      },
+      include: {
+        participants: true,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // Find the target participant (user being approved)
+    const targetParticipant = conversation.participants.find(
+      (p) => p.user_id === targetUserId,
+    );
+
+    if (!targetParticipant) {
+      throw new NotFoundException(
+        'User has not requested to join this conversation',
+      );
+    }
+
+    if (targetParticipant.status === ParticipantStatus.VERIFIED) {
+      throw new BadRequestException(
+        'User is already verified in this conversation',
+      );
+    }
+
+    // Update participant status to VERIFIED
+    const updatedParticipant = await this.prismaService.participant.update({
+      where: { id: targetParticipant.id },
+      data: {
+        status: ParticipantStatus.VERIFIED,
+        verified_by: account.id, // Record who approved the request
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            is_active: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Join request approved successfully',
+      participant: updatedParticipant,
+    };
   }
 }

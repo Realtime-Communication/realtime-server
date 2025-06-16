@@ -43,7 +43,7 @@ export class ChatService {
         content: messageDto.content || '',
         call_type: messageDto.callType || CallType.VOICE,
         call_status: messageDto.callStatus || CallStatus.ENDED,
-        status: messageDto.status || MessageStatus.SENT,
+        message_status: messageDto.status || MessageStatus.SENT,
         attachments: messageDto.attachments
           ? {
               create: messageDto.attachments.map((attachment) => ({
@@ -54,7 +54,7 @@ export class ChatService {
           : undefined,
       },
       include: {
-        user: {
+        sender: {
           select: {
             id: true,
             first_name: true,
@@ -64,7 +64,7 @@ export class ChatService {
         },
         attachments: true,
       },
-    });
+    }) as any; // Type assertion to fix TypeScript type inference
 
     // Update conversation's last activity
     await this.prismaService.conversation.update({
@@ -83,12 +83,12 @@ export class ChatService {
       deletedAt: message.deleted_at,
       callType: message.call_type,
       call_status: message.call_status,
-      status: message.status,
-      user: message.user ? {
-        id: message.user.id,
-        firstName: message.user.first_name,
-        lastName: message.user.last_name,
-        email: message.user.email,
+      status: message.message_status,
+      sender: message.sender ? {
+        id: message.sender.id,
+        firstName: message.sender.first_name,
+        lastName: message.sender.last_name,
+        email: message.sender.email,
       } : undefined,
       attachments: message.attachments?.map(att => ({
         id: att.id,
@@ -154,7 +154,7 @@ export class ChatService {
         },
       },
       include: {
-        user: {
+        sender: {
           select: {
             id: true,
             first_name: true,
@@ -219,10 +219,10 @@ export class ChatService {
         message_type: MessageType.CALL,
         call_type: CallType.VOICE,
         call_status: CallStatus.INVITED,
-        status: MessageStatus.SENT,
+        message_status: MessageStatus.SENT,
       },
       include: {
-        user: {
+        sender: {
           select: {
             id: true,
             first_name: true,

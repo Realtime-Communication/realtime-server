@@ -1,80 +1,65 @@
-import { Module } from '@nestjs/common';
+import { Module, HttpStatus } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RedisModule } from '@nestjs-modules/ioredis';
+
+// Core modules
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PrismaModule } from './common/prisma/prisma.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+// Feature modules
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/realtime.module';
-import { CacheModule, CacheModuleAsyncOptions } from '@nestjs/cache-manager';
-import { RedisModule } from '@nestjs-modules/ioredis';
-import { redisStore } from 'cache-manager-redis-store';
-import { PrismaModule } from './common/prisma/prisma.module';
 import { FriendModule } from './friends/friends.module';
-import { ConversationService } from './groups/conversations.service';
 import { ConversationModule } from './groups/conversations.module';
-
-// export const RedisOptions: CacheModuleAsyncOptions = {
-//   isGlobal: true,
-//   imports: [ConfigModule],
-//   useFactory: async (configService: ConfigService) => {
-//     const store = await redisStore({
-//       url: process.env.REDIS_URL,
-//     });
-//     return {
-//       store: () => store,
-//       ttl: configService.get<string>('REDIS_TTL'),
-//       host: configService.get<string>('REDIS_HOST'),
-//       port: configService.get<string>('REDIS_PORT'),
-//     };
-//   },
-//   inject: [ConfigService],
-// };
+import { StoryModule } from './story/story.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
+    // Configuration
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
+    // Database and Cache
+    PrismaModule,
     RedisModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'single',
         options: {
-          host: configService.get('REDIS_HOST', 'redis'),
+          host: configService.get('REDIS_HOST', 'localhost'),
           port: parseInt(configService.get('REDIS_PORT', '6379')),
           password: configService.get('REDIS_PASSWORD', 'mypassword'),
-          retryStrategy: (times: number) => {
-            const delay = Math.min(times * 50, 2000);
-            return delay;
-          },
+          retryStrategy: (times: number) => Math.min(times * 50, 2000),
           maxRetriesPerRequest: 3,
         },
       }),
       inject: [ConfigService],
     }),
 
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-
-    // MongooseModule.forRootAsync({
-    //   imports: [ConfigModule],
-    //   useFactory: async (configService: ConfigService) => ({
-    //     uri: configService.get<string>('MONGODB_URL'),
-    //   }),
-    //   inject: [ConfigService],
-    // }),
-    // ConfigModule.forRoot({
-    //   isGlobal: true,
-    // }),
-    // CacheModule.registerAsync(RedisOptions),
+    // Feature modules
     UsersModule,
     AuthModule,
     ChatModule,
-    ConversationModule,
-    PrismaModule,
-    RedisModule,
     FriendModule,
+    ConversationModule,
+
+    // Business modules
+    StoryModule,
+    AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -51,14 +51,7 @@ export class GroupsController {
       ...queryMessageDto,
       conversationId: id,
     });
-  }
-
-  // @Get('')
-  // findAll(
-  //   @AccountRequest() account: TAccountRequest,
-  // ) {
-  //   return this.groupsService.getConversations(account);
-  // }
+  } 
 
   @Post('/:id/kick')
   async kickParticipant(
@@ -100,6 +93,31 @@ export class GroupsController {
     @Body() actionDto: ConversationActionDto,
   ) {
     return await this.conversationService.leaveConversation(account, {
+      ...actionDto,
+      conversationId: id,
+    });
+  }
+
+  @Post(":id/join")
+  async joinConversation(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') id: number,
+    @Body() actionDto: ConversationActionDto,
+  ) {
+    return await this.conversationService.joinConversation(account, {
+      ...actionDto,
+      conversationId: id,
+    });
+  }
+
+
+  @Post(":id/approve")
+  async approveJoinConversation(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') id: number,
+    @Body() actionDto: ConversationActionDto,
+  ) {
+    return await this.conversationService.approveJoinConversation(account, {
       ...actionDto,
       conversationId: id,
     });

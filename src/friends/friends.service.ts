@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AddFriendDto } from './dto/create-friend.dto';
 import { UpdateFriendDto } from './dto/update-friend.dto';
@@ -10,11 +11,119 @@ import { FriendVm } from './dto/friend.vm';
 import { PagedResponse } from 'src/common/pagination/paged.vm';
 import { Pageable } from 'src/common/pagination/pageable.dto';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
-import { FriendStatus, ParticipantType } from '@prisma/client';
+import { FriendStatus, ParticipantType, Prisma } from '@prisma/client';
+
+type FriendWithRelations = Prisma.FriendGetPayload<{
+  include: {
+    requester: { select: { id: true; first_name: true; last_name: true; email: true; is_active?: boolean } };
+    receiver: { select: { id: true; first_name: true; last_name: true; email: true; is_active?: boolean } };
+  };
+}>;
 
 @Injectable()
 export class FriendsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  async rejectFriendRequest(account: TAccountRequest, friendShipRequestId: number) {
+    // Only the receiver can reject a friend request
+    const friendRequest = await this.prismaService.friend.findUnique({
+      where: { id: friendShipRequestId, receiver_id: account.id, status: 'PENDING' },
+    });
+
+    if (!friendRequest) {
+      throw new NotFoundException('Friend request not found or already processed');
+    }
+
+    await this.prismaService.friend.update({
+      where: { id: friendShipRequestId },
+      data: { status: 'REJECTED' },
+    });
+
+    return { success: true, message: 'Friend request rejected' };
+  }
+
+  async blockFriendRequest(account: TAccountRequest, friendShipRequestId: number) {
+    // First find the friend request
+    const friendRequest = await this.prismaService.friend.findUnique({
+      where: { id: friendShipRequestId },
+    });
+
+    if (!friendRequest) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    // Check if the current user is either the requester or receiver
+    if (friendRequest.requester_id !== account.id && friendRequest.receiver_id !== account.id) {
+      throw new ForbiddenException('You are not authorized to block this request');
+    }
+
+    // Find the other user's ID
+    const otherUserId = friendRequest.requester_id === account.id
+      ? friendRequest.receiver_id
+      : friendRequest.requester_id;
+
+    // Block the user
+    // Check if already blocked
+    const existingBlock = await this.prismaService.blockList.findFirst({
+      where: {
+        user_id: account.id,
+        participant_id: otherUserId
+      }
+    });
+
+    // Only create if not already blocked
+    if (!existingBlock) {
+      await this.prismaService.blockList.create({
+        data: {
+          user_id: account.id,
+          participant_id: otherUserId
+        }
+      });
+    }
+
+    // Delete the friend request/relationship
+    await this.prismaService.friend.delete({
+      where: { id: friendShipRequestId },
+    });
+
+    return { success: true, message: 'User blocked successfully' };
+  }
+
+  async unblockFriendRequest(account: TAccountRequest, blockedUserId: number) {
+    // Remove from block list
+    await this.prismaService.blockList.deleteMany({
+      where: {
+        user_id: account.id,
+        participant_id: blockedUserId
+      }
+    });
+
+    return { success: true, message: 'User unblocked successfully' };
+  }
+
+  async unfriendFriendRequest(account: TAccountRequest, friendShipRequestId: number) {
+    // Find the friend relationship
+    const friendRequest = await this.prismaService.friend.findUnique({
+      where: { id: friendShipRequestId },
+    });
+
+    if (!friendRequest) {
+      throw new NotFoundException('Friend relationship not found');
+    }
+
+    // Check if the current user is part of this relationship
+    if (friendRequest.requester_id !== account.id && friendRequest.receiver_id !== account.id) {
+      throw new ForbiddenException('You are not authorized to perform this action');
+    }
+
+    // Delete the friend relationship
+    await this.prismaService.friend.delete({
+      where: { id: friendShipRequestId },
+    });
+
+    return { success: true, message: 'Friend removed successfully' };
+  }
+
+
+  constructor(private readonly prismaService: PrismaService) { }
 
   async addFriend(
     account: TAccountRequest,
@@ -72,7 +181,6 @@ export class FriendsService {
               first_name: true,
               last_name: true,
               email: true,
-              is_active: true,
             },
           },
           receiver: {

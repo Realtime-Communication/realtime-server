@@ -4,7 +4,7 @@ import { ChatService } from './message.service';
 @Injectable()
 @Controller('chats')
 export class MessageController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) { }
 
   // @Get('/mychats')
   // async SMessage(@Request() req) {

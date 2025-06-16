@@ -9,7 +9,7 @@ import { Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  catch(exception: any, host: ArgumentsHost) {
+  catch(exception: Error, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
@@ -20,6 +20,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     console.error('Unhandled error:', exception);
-    return response.status(500).json({ message: 'Internal Server Error' });
+    return response.status(400).json({
+      message: exception.message,
+      error: exception.name,
+      stack: exception.stack,
+    });
   }
 }

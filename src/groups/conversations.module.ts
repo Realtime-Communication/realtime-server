@@ -7,8 +7,6 @@ import { PrismaModule } from 'src/common/prisma/prisma.module';
 
 @Module({
   imports: [
-    // MongooseModule.forFeature([{ name: Group.name, schema: GroupSchema }]),
-    // HelpersModule
     PrismaModule,
   ],
   controllers: [GroupsController],

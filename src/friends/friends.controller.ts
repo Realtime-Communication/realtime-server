@@ -88,4 +88,40 @@ export class FriendsController {
   ) {
     return this.friendsService.acceptFriendRequest(account, friendShipRequestId);
   }
+
+  @Post('/:id/reject')
+  @ResponseMessage('Friend request rejected successfully')
+  async rejectFriendRequest(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') friendShipRequestId: number
+  ) {
+    return this.friendsService.rejectFriendRequest(account, friendShipRequestId);
+  }
+
+  @Post('/:id/block')
+  @ResponseMessage('Friend request blocked successfully')
+  async blockFriendRequest(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') friendShipRequestId: number
+  ) {
+    return this.friendsService.blockFriendRequest(account, friendShipRequestId);
+  }
+
+  @Post('/:id/unblock')
+  @ResponseMessage('Friend request unblocked successfully')
+  async unblockFriendRequest(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') friendShipRequestId: number
+  ) {
+    return this.friendsService.unblockFriendRequest(account, friendShipRequestId);
+  }
+
+  @Post('/:id/unfriend')
+  @ResponseMessage('Friend request unfriended successfully')
+  async unfriendFriendRequest(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') friendShipRequestId: number
+  ) {
+    return this.friendsService.unfriendFriendRequest(account, friendShipRequestId);
+  }
 }
