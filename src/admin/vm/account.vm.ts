@@ -1,22 +1,26 @@
-import { AccountRole } from '@prisma/client';
+import { User } from '@prisma/client';
 
 export class AccountVM {
   id: number;
-  phone: string;
   email: string;
-  first_name: string;
-  middle_name?: string;
-  last_name: string;
-  role: AccountRole;
-  is_blocked: boolean;
-  is_active: boolean;
-  level_left?: number;
-  level_right?: number;
-  created_at: Date;
-  updated_at: Date;
+  phone: string;
+  role: string;
+  isBlocked: boolean;
+  isActive: boolean;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  preferences?: string;
+  levelLeft?: number;
+  levelRight?: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export class AccountListVM {
   items: AccountVM[];
   total: number;
+  page: number;
+  size: number;
+  totalPages: number;
 } 

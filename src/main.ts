@@ -22,6 +22,7 @@ import {
 import { UsersModule } from './users/users.module';
 import { ChatModule } from './chat/realtime.module';
 import { AllExceptionsFilter } from './exception/global.exception';
+import runSeedData from './seed';
 
 class CallChatApplication {
   public static async bootstrap(args: string[]): Promise<void> {
@@ -85,8 +86,7 @@ class CallChatApplication {
     app.useGlobalInterceptors(new TransformInterceptor(reflector));
 
     await app.listen(configService.get<string>('PORT'));
-
-    
+    await runSeedData();
   }
 }
 

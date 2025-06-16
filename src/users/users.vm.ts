@@ -1,3 +1,5 @@
+import { AccountRole } from "@prisma/client";
+
 export class UserVm {
   id: number;
   phone: string;
@@ -9,6 +11,7 @@ export class UserVm {
   isActive: boolean;
   isReported: boolean;
   isBlocked: boolean;
+  type?: AccountRole;
   preferences: string;
   createdAt: Date;
   updatedAt: Date;

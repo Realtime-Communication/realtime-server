@@ -44,19 +44,20 @@ export class UsersController {
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiOkResponse({ type: UserVm, description: 'Returns the user information' })
+  @ApiResponse({ status: 403, description: 'You can only view your own information' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @AccountRequest() account: TAccountRequest,
   ) {
     // Only allow users to view their own information
-    if (id !== account.id) {
-      throw new ForbiddenException('You can only view your own information');
-    }
+    // if (id !== account.id) {
+    //   throw new ForbiddenException('You can only view your own information');
+    // }
     return await this.userService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch()
   @ApiOperation({ summary: 'Update user information' })
   @ApiCreatedResponse({
     type: UserVm,
@@ -72,18 +73,18 @@ export class UsersController {
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    // @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
     @AccountRequest() account: TAccountRequest,
   ) {
     // Only allow users to update their own information
-    if (id !== account.id) {
-      throw new ForbiddenException('You can only update your own information');
-    }
-    return await this.userService.update(id, updateUserDto);
+    // if (id !== account.id) {
+    //   throw new ForbiddenException('You can only update your own information');
+    // }
+    return await this.userService.update(account.id, updateUserDto);
   }
 
-  @Post(':id/change-password')
+  @Post('change-password')
   @ApiOperation({ summary: 'Change user password' })
   @ApiResponse({ status: 200, description: 'Password changed successfully' })
   @ApiResponse({
@@ -96,19 +97,18 @@ export class UsersController {
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async changePassword(
-    @Param('id', ParseIntPipe) id: number,
     @Body() changePasswordDto: ChangePasswordDto,
     @AccountRequest() account: TAccountRequest,
   ) {
     // Only allow users to change their own password
-    if (id !== account.id) {
-      throw new ForbiddenException('You can only change your own password');
-    }
-    await this.userService.changePassword(id, changePasswordDto);
+    // if (account.id !== changePasswordDto.id) {
+    //   throw new ForbiddenException('You can only change your own password');
+    // }
+    await this.userService.changePassword(account.id, changePasswordDto);
     return { message: 'Password changed successfully' };
   }
 
-  @Delete(':id')
+  @Delete('')
   @ApiOperation({ summary: 'Delete user' })
   @ApiOkResponse({ type: UserVm, description: 'User deleted successfully' })
   @ApiResponse({
@@ -117,13 +117,12 @@ export class UsersController {
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async remove(
-    @Param('id', ParseIntPipe) id: number,
     @AccountRequest() account: TAccountRequest,
   ) {
     // Only allow users to delete their own account
-    if (id !== account.id) {
-      throw new ForbiddenException('You can only delete your own account');
-    }
-    return await this.userService.remove(id);
+    // if (id !== account.id) {
+    //   throw new ForbiddenException('You can only delete your own account');
+    // }
+    return await this.userService.remove(account.id);
   }
 }

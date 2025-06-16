@@ -1,28 +1,35 @@
+import { ParticipantStatus, ParticipantType } from '@prisma/client';
+
 export class ConversationVM {
   id: number;
   title: string;
-  creator_id: number;
-  channel_id: number;
-  created_at: Date;
-  updated_at: Date;
-  deleted_at?: Date;
-  avatar_url: string;
+  creatorId: number;
+  channelId: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+  avatarUrl: string;
   creator: {
     id: number;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     email: string;
   };
   participants: {
     id: number;
+    conversationId: number;
+    userId: number;
+    type: ParticipantType;
+    status: ParticipantStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    verifiedBy?: number;
     user: {
       id: number;
-      first_name: string;
-      last_name: string;
+      firstName: string;
+      lastName: string;
       email: string;
     };
-    type: string;
-    status: string;
   }[];
 }
 

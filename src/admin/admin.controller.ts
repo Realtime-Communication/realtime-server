@@ -17,12 +17,11 @@ export class AdminController {
     return this.adminService.getAccounts(filter);
   }
 
-  @Patch('accounts/:id')
+  @Patch('accounts')
   updateAccount(
-    @Param('id') id: string,
     @Body() updateAccountDto: UpdateAccountDto,
   ): Promise<AccountVM> {
-    return this.adminService.updateAccount(+id, updateAccountDto);
+    return this.adminService.updateAccount(updateAccountDto);
   }
 
   // Report Management

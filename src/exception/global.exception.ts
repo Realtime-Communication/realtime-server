@@ -23,7 +23,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     return response.status(400).json({
       message: exception.message,
       error: exception.name,
-      stack: exception.stack,
+      timestamp: new Date().toISOString(),
+      path: ctx.getRequest().url,
+      statusCode: 400,
+      // stack: exception.stack,
     });
   }
 }

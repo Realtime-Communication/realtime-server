@@ -2,23 +2,23 @@ import { ReportStatus } from '@prisma/client';
 
 export class ReportVM {
   id: number;
-  user_id: number;
-  participant_id: number;
-  report_type: string;
+  userId: number;
+  participantId: number;
+  reportType: string;
   notes?: string;
   status: ReportStatus;
-  created_at: Date;
-  rejected_reason?: string;
+  createdAt: Date;
+  rejectedReason?: string;
   user: {
     id: number;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     email: string;
   };
   participant: {
     id: number;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     email: string;
   };
 }

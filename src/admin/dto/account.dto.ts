@@ -1,26 +1,29 @@
-import { IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsPhoneNumber,
+  IsNumber,
+} from 'class-validator';
 import { AccountRole } from '@prisma/client';
+import { Pageable } from '../../common/pagination/pageable.dto';
+import { Transform, Type } from 'class-transformer';
 
 export class UpdateAccountDto {
-  @IsOptional()
-  @IsPhoneNumber()
-  phone?: string;
 
+  @IsNumber()
+  id?: number;
+  
   @IsOptional()
-  @IsEmail()
+  @IsString()
   email?: string;
 
   @IsOptional()
   @IsString()
-  first_name?: string;
-
-  @IsOptional()
-  @IsString()
-  middle_name?: string;
-
-  @IsOptional()
-  @IsString()
-  last_name?: string;
+  phone?: string;
 
   @IsOptional()
   @IsEnum(AccountRole)
@@ -28,35 +31,107 @@ export class UpdateAccountDto {
 
   @IsOptional()
   @IsBoolean()
-  is_blocked?: boolean;
+  isBlocked?: boolean;
 
   @IsOptional()
   @IsBoolean()
-  is_active?: boolean;
+  isActive?: boolean;
 
   @IsOptional()
-  @IsInt()
-  level_left?: number;
+  @IsString()
+  firstName?: string;
 
   @IsOptional()
-  @IsInt()
-  level_right?: number;
+  @IsString()
+  middleName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  preferences?: string;
+
+  @IsOptional()
+  levelLeft?: number;
+
+  @IsOptional()
+  levelRight?: number;
 }
 
 export class AccountFilterDto {
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Page must be a number' })
+  page: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Size must be a number' })
+  size: number = 10;
+
+  @IsOptional()
+  @IsString({ message: 'Search must be a string' })
+  search?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  id?: number;
+
   @IsOptional()
   @IsString()
-  search?: string;
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @IsOptional()
   @IsEnum(AccountRole)
   role?: AccountRole;
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true')
   @IsBoolean()
-  is_blocked?: boolean;
+  isBlocked?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true')
   @IsBoolean()
-  is_active?: boolean;
-} 
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  middleName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  preferences?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  levelLeft?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  levelRight?: number;
+
+  @IsOptional()
+  @IsString()
+  order?: string;
+
+  @IsOptional()
+  @IsString({ each: true })
+  searchFields?: string[];
+}
