@@ -1,30 +1,30 @@
 version: '3.8'
 
 services:
-  # backend:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: nest-backend
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - NODE_ENV=development
-  #     - PORT=8080
-  #     - DATABASE_URL=postgres://admin:adminpassword@postgres:5432/main_db
-  #     - REDIS_URL=redis://:mypassword@redis:6379
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - REDIS_PASSWORD=mypassword
-  #     - JWT_ACCESS_TOKEN=xkjshdkfjhasdjkfbasjsdhjgfhjsdvfhsdsfbusgdfhj
-  #     - JWT_ACCESS_EXPIRED=7d
-  #     - PRISMA_CLIENT_ENGINE_TYPE=binary
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   networks:
-  #     - app-net
-  #   restart: always
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nest-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - DATABASE_URL=postgres://admin:adminpassword@postgres:5432/main_db
+      - REDIS_URL=redis://:mypassword@redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=mypassword
+      - JWT_ACCESS_TOKEN=xkjshdkfjhasdjkfbasjsdhjgfhjsdvfhsdsfbusgdfhj
+      - JWT_ACCESS_EXPIRED=7d
+      - PRISMA_CLIENT_ENGINE_TYPE=binary
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - app-net
+    restart: always
 
   postgres:
     image: postgres:16
