@@ -26,4 +26,7 @@ export class ReportVM {
 export class ReportListVM {
   items: ReportVM[];
   total: number;
+  page: number;
+  size: number;
+  totalPages: number;
 } 

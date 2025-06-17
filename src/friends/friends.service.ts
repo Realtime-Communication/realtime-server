@@ -12,6 +12,7 @@ import { PagedResponse } from 'src/common/pagination/paged.vm';
 import { Pageable } from 'src/common/pagination/pageable.dto';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
 import { FriendStatus, ParticipantType, Prisma } from '@prisma/client';
+import { FriendSearchDto } from './dto/friend-search.dto';
 
 type FriendWithRelations = Prisma.FriendGetPayload<{
   include: {
@@ -325,53 +326,116 @@ export class FriendsService {
 
   async findAll(
     account: TAccountRequest,
-    pageable: Pageable,
+    searchDto: FriendSearchDto,
   ): Promise<PagedResponse<FriendVm>> {
+    // Define searchable fields for friend search
+    const searchableFields = [
+      'first_name',
+      'last_name',
+      'email'
+    ];
+
+    // Field mapping from camelCase to snake_case
+    const fieldMapping: Record<string, string> = {
+      firstName: 'first_name',
+      lastName: 'last_name',
+      createdAt: 'created_at',
+      requesterId: 'requester_id',
+      receiverId: 'receiver_id'
+    };
+
+    // Build the where clause
+    const where: Prisma.FriendWhereInput = {
+      AND: [
+        // Base condition - user is either requester or receiver
+        {
+          OR: [{ requester_id: account.id }, { receiver_id: account.id }],
+        },
+        // Apply search filter if search term is provided
+        searchDto.search && searchDto.searchFields?.length ? {
+          OR: [
+            {
+              requester: {
+                OR: searchDto.searchFields
+                  .filter(field => searchableFields.includes(fieldMapping[field] || field))
+                  .map(field => ({
+                    [fieldMapping[field] || field]: { contains: searchDto.search, mode: 'insensitive' }
+                  }))
+              },
+            },
+            {
+              receiver: {
+                OR: searchDto.searchFields
+                  .filter(field => searchableFields.includes(fieldMapping[field] || field))
+                  .map(field => ({
+                    [fieldMapping[field] || field]: { contains: searchDto.search, mode: 'insensitive' }
+                  }))
+              },
+            },
+          ],
+        } : searchDto.search ? {
+          OR: [
+            {
+              requester: {
+                OR: [
+                  { first_name: { contains: searchDto.search, mode: 'insensitive' } },
+                  { last_name: { contains: searchDto.search, mode: 'insensitive' } },
+                  { email: { contains: searchDto.search, mode: 'insensitive' } },
+                ],
+              },
+            },
+            {
+              receiver: {
+                OR: [
+                  { first_name: { contains: searchDto.search, mode: 'insensitive' } },
+                  { last_name: { contains: searchDto.search, mode: 'insensitive' } },
+                  { email: { contains: searchDto.search, mode: 'insensitive' } },
+                ],
+              },
+            },
+          ],
+        } : {},
+        // Apply status filter
+        {
+          ...(searchDto.status && { status: searchDto.status }),
+        }
+      ].filter(Boolean) as Prisma.FriendWhereInput[]
+    };
+
+    // Set default ordering if not provided
+    let orderBy: Prisma.FriendOrderByWithRelationInput = { created_at: 'desc' };
+    let shouldSortByName = false;
+    let nameSortDirection: 'asc' | 'desc' = 'asc';
+    
+    if (searchDto.order) {
+      const [field, direction] = searchDto.order.split(',');
+      const mappedField = fieldMapping[field] || field;
+      
+      if (mappedField === 'name') {
+        // For ordering by name, we'll handle it in the application layer
+        shouldSortByName = true;
+        nameSortDirection = direction === 'asc' ? 'asc' : 'desc';
+        orderBy = { created_at: 'desc' }; // Default ordering for database query
+      } else {
+        // Check if the field exists in the Friend model
+        const validFields = ['id', 'requester_id', 'receiver_id', 'status', 'created_at'];
+        if (validFields.includes(mappedField)) {
+          orderBy = {
+            [mappedField]: direction === 'asc' ? 'asc' : 'desc'
+          } as Prisma.FriendOrderByWithRelationInput;
+        } else {
+          // Default to created_at if field is not valid
+          orderBy = { created_at: 'desc' };
+        }
+      }
+    }
+
+    const skip = (searchDto.page - 1) * searchDto.size;
+    const take = searchDto.size;
+
     const [friends, total] = await Promise.all([
       this.prismaService.friend.findMany({
-        where: {
-          OR: [{ requester_id: account.id }, { receiver_id: account.id }],
-          ...(pageable.search && {
-            OR: [
-              {
-                requester: {
-                  OR: [
-                    {
-                      first_name: {
-                        contains: pageable.search,
-                        mode: 'insensitive',
-                      },
-                    },
-                    {
-                      last_name: {
-                        contains: pageable.search,
-                        mode: 'insensitive',
-                      },
-                    },
-                  ],
-                },
-              },
-              {
-                receiver: {
-                  OR: [
-                    {
-                      first_name: {
-                        contains: pageable.search,
-                        mode: 'insensitive',
-                      },
-                    },
-                    {
-                      last_name: {
-                        contains: pageable.search,
-                        mode: 'insensitive',
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          }),
-        },
+        where,
         include: {
           requester: {
             select: {
@@ -392,22 +456,42 @@ export class FriendsService {
             },
           },
         },
-        take: pageable.size,
-        skip: (pageable.page - 1) * pageable.size,
+        take,
+        skip,
+        orderBy,
       }),
-      this.prismaService.friend.count({
-        where: {
-          OR: [{ requester_id: account.id }, { receiver_id: account.id }],
-        },
-      }),
+      this.prismaService.friend.count({ where }),
     ]);
 
+    // Handle name sorting in application layer if requested
+    let sortedFriends = friends;
+    if (shouldSortByName) {
+      sortedFriends = friends.sort((a, b) => {
+        const getFriendName = (friend: any) => {
+          // Determine which user is the friend (not the current user)
+          const friendUser = friend.requester_id === account.id ? friend.receiver : friend.requester;
+          return `${friendUser.first_name} ${friendUser.last_name}`.toLowerCase();
+        };
+
+        const nameA = getFriendName(a);
+        const nameB = getFriendName(b);
+
+        if (nameSortDirection === 'asc') {
+          return nameA.localeCompare(nameB);
+        } else {
+          return nameB.localeCompare(nameA);
+        }
+      });
+    }
+
+    const totalPages = Math.ceil(total / take);
+
     return {
-      page: pageable.page,
-      size: pageable.size,
-      totalPage: Math.ceil(total / pageable.size),
+      page: searchDto.page,
+      size: searchDto.size,
+      totalPage: totalPages,
       totalElement: total,
-      result: friends.map(friend => this.toFriendVm(friend)),
+      result: sortedFriends.map(friend => this.toFriendVm(friend)),
     };
   }
 

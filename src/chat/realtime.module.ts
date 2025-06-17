@@ -10,15 +10,22 @@ import { WsJwtGuard } from 'src/chat/ws.guard';
 import { JwtModule } from '@nestjs/jwt';
 import ms from 'ms';
 import { AuthModule } from 'src/auth/auth.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     UsersModule,
     ConfigModule, // ✅ Correct module import
     FriendModule,
-    AuthModule
+    AuthModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 10, // 10 requests per minute
+      },
+    ]),
   ],
   providers: [ChatGateway, ChatService, CacheManager, WsJwtGuard],
   controllers: [MessageController],
 })
-export class ChatModule {}
+export class ChatModule { }

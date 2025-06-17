@@ -11,6 +11,7 @@ import {
 import { FriendsService } from './friends.service';
 import { AddFriendDto } from './dto/create-friend.dto';
 import { UpdateFriendDto } from './dto/update-friend.dto';
+import { FriendSearchDto } from './dto/friend-search.dto';
 import { Pageable } from 'src/common/pagination/pageable.dto';
 import {
   AccountRequest,
@@ -34,9 +35,9 @@ export class FriendsController {
   @Get()
   async findAll(
     @AccountRequest() account: TAccountRequest,
-    @Query() pageable: Pageable,
+    @Query() searchDto: FriendSearchDto,
   ) {
-    return this.friendsService.findAll(account, pageable);
+    return this.friendsService.findAll(account, searchDto);
   }
 
   @Get('/requested')

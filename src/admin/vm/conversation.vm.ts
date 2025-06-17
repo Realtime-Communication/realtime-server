@@ -36,4 +36,7 @@ export class ConversationVM {
 export class ConversationListVM {
   items: ConversationVM[];
   total: number;
+  page: number;
+  size: number;
+  totalPages: number;
 } 

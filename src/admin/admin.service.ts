@@ -168,19 +168,61 @@ export class AdminService {
 
   // Report Management
   async getReports(filter: ReportFilterDto): Promise<ReportListVM> {
-    const where = {
-      ...(filter.status && { status: filter.status }),
-      ...(filter.search && {
-        OR: [
-          { report_type: { contains: filter.search } },
-          { notes: { contains: filter.search } },
-        ],
-      }),
+    // Define searchable fields for the report search
+    const searchableFields = [
+      'report_type',
+      'notes',
+      'status'
+    ];
+
+    // Field mapping from camelCase to snake_case
+    const fieldMapping: Record<string, string> = {
+      reportType: 'report_type',
+      rejectedReason: 'rejected_reason',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
     };
+
+    // Build the where clause
+    const where: Prisma.ReportWhereInput = {
+      AND: [
+        // Apply search filter if search term is provided
+        filter.search && filter.searchFields?.length ? {
+          OR: filter.searchFields
+            .filter(field => searchableFields.includes(fieldMapping[field] || field))
+            .map(field => ({
+              [fieldMapping[field] || field]: { contains: filter.search, mode: 'insensitive' }
+            }))
+        } : filter.search ? {
+          OR: [
+            { report_type: { contains: filter.search, mode: 'insensitive' } },
+            { notes: { contains: filter.search, mode: 'insensitive' } },
+          ],
+        } : {},
+        // Apply individual filters
+        {
+          ...(filter.status && { status: filter.status }),
+        }
+      ].filter(Boolean) as Prisma.ReportWhereInput[]
+    };
+
+    // Set default ordering if not provided
+    const orderBy: Record<string, 'asc' | 'desc'> = filter.order
+      ? {
+          [fieldMapping[filter.order.split(',')[0]] || filter.order.split(',')[0]]: 
+            filter.order.split(',')[1] === 'asc' ? 'asc' : 'desc'
+        }
+      : { created_at: 'desc' };
+
+    const skip = (filter.page - 1) * filter.size;
+    const take = filter.size;
 
     const [items, total] = await Promise.all([
       this.prisma.report.findMany({
         where,
+        skip,
+        take,
+        orderBy,
         include: {
           user: {
             select: {
@@ -199,10 +241,11 @@ export class AdminService {
             },
           },
         },
-        orderBy: { created_at: 'desc' },
       }),
       this.prisma.report.count({ where }),
     ]);
+
+    const totalPages = Math.ceil(total / take);
 
     // Transform snake_case to camelCase
     const transformedItems = items.map(item => ({
@@ -228,7 +271,13 @@ export class AdminService {
       },
     }));
 
-    return { items: transformedItems, total };
+    return { 
+      items: transformedItems, 
+      total,
+      page: filter.page,
+      size: filter.size,
+      totalPages,
+    };
   }
 
   async updateReport(id: number, dto: UpdateReportDto): Promise<ReportVM> {
@@ -285,18 +334,60 @@ export class AdminService {
 
   // Conversation Management
   async getConversations(filter: ConversationFilterDto): Promise<ConversationListVM> {
-    const where = {
-      ...(filter.search && {
-        OR: [
-          { title: { contains: filter.search } },
-        ],
-      }),
-      ...(filter.creator_id && { creator_id: parseInt(filter.creator_id) }),
+    // Define searchable fields for the conversation search
+    const searchableFields = [
+      'title'
+    ];
+
+    // Field mapping from camelCase to snake_case
+    const fieldMapping: Record<string, string> = {
+      creatorId: 'creator_id',
+      channelId: 'channel_id',
+      avatarUrl: 'avatar_url',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      deletedAt: 'deleted_at'
     };
+
+    // Build the where clause
+    const where: Prisma.ConversationWhereInput = {
+      AND: [
+        // Apply search filter if search term is provided
+        filter.search && filter.searchFields?.length ? {
+          OR: filter.searchFields
+            .filter(field => searchableFields.includes(fieldMapping[field] || field))
+            .map(field => ({
+              [fieldMapping[field] || field]: { contains: filter.search, mode: 'insensitive' }
+            }))
+        } : filter.search ? {
+          OR: [
+            { title: { contains: filter.search, mode: 'insensitive' } },
+          ],
+        } : {},
+        // Apply individual filters
+        {
+          ...(filter.creator_id && { creator_id: parseInt(filter.creator_id) }),
+        }
+      ].filter(Boolean) as Prisma.ConversationWhereInput[]
+    };
+
+    // Set default ordering if not provided
+    const orderBy: Record<string, 'asc' | 'desc'> = filter.order
+      ? {
+          [fieldMapping[filter.order.split(',')[0]] || filter.order.split(',')[0]]: 
+            filter.order.split(',')[1] === 'asc' ? 'asc' : 'desc'
+        }
+      : { created_at: 'desc' };
+
+    const skip = (filter.page - 1) * filter.size;
+    const take = filter.size;
 
     const [items, total] = await Promise.all([
       this.prisma.conversation.findMany({
         where,
+        skip,
+        take,
+        orderBy,
         include: {
           creator: {
             select: {
@@ -319,10 +410,11 @@ export class AdminService {
             },
           },
         },
-        orderBy: { created_at: 'desc' },
       }),
       this.prisma.conversation.count({ where }),
     ]);
+
+    const totalPages = Math.ceil(total / take);
 
     // Transform snake_case to camelCase
     const transformedItems = items.map(item => ({
@@ -358,7 +450,13 @@ export class AdminService {
       })),
     }));
 
-    return { items: transformedItems, total };
+    return { 
+      items: transformedItems, 
+      total,
+      page: filter.page,
+      size: filter.size,
+      totalPages,
+    };
   }
 
   async deleteConversation(id: number): Promise<void> {

@@ -11,6 +11,7 @@ import { CommentPaginationDto } from './dto/comment-pagination.dto';
 @ApiTags('stories')
 @Controller('story')
 export class StoryController {
+  
   constructor(private readonly storyService: StoryService) { }
 
   @Post()

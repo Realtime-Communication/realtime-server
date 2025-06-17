@@ -1,12 +1,8 @@
-import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { FriendStatus } from '@prisma/client';
 
-export class ConversationFilterDto {
-
-  // @Type(() => Number)
-  // @IsNumber({}, { message: 'ID must be a number' })
-  // id?: number;
-
+export class FriendSearchDto {
   @Type(() => Number)
   @IsNumber({}, { message: 'Page must be a number' })
   page: number = 1;
@@ -21,8 +17,8 @@ export class ConversationFilterDto {
   search?: string;
 
   @IsOptional()
-  @IsString()
-  creator_id?: string;
+  @IsEnum(FriendStatus)
+  status?: FriendStatus;
 
   @IsOptional()
   @IsString()
@@ -31,9 +27,4 @@ export class ConversationFilterDto {
   @IsOptional()
   @IsString({ each: true, message: 'Search fields must be an array of strings' })
   searchFields?: string[];
-}
-
-export class DeleteConversationDto {
-  @IsNumber({}, { message: 'ID must be a number' })
-  id: number;
 }

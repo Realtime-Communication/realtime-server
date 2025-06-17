@@ -12,7 +12,7 @@ import { AuthenticatedSocket } from 'src/chat/realtime.gateway';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {
-  constructor(private reflector: Reflector, private jwtService: JwtService) {}
+  constructor(private reflector: Reflector, private jwtService: JwtService) { }
 
   canActivate(context: ExecutionContext): boolean {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
