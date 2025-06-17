@@ -34,6 +34,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.8.0",
     "@nestjs-modules/ioredis": "^2.0.2",
     "@nestjs/cache-manager": "^2.2.1",
     "@nestjs/common": "^10.4.17",
@@ -79,7 +80,6 @@
     "uuid": "^11.0.5"
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.8.0",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.0.0",

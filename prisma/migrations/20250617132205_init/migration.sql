@@ -29,7 +29,7 @@ CREATE TYPE "FriendStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED');
 CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'RESOLVED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "ParticipantStatus" AS ENUM ('VERIFIED', 'UNVERIFIED');
+CREATE TYPE "ParticipantStatus" AS ENUM ('VERIFIED', 'UNVERIFIED', 'REJECTED');
 
 -- CreateTable
 CREATE TABLE "User" (

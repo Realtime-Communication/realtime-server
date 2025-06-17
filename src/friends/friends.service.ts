@@ -169,7 +169,7 @@ export class FriendsService {
     }
 
     return await this.prismaService.$transaction(async (prisma) => {
-      const friend = await this.prismaService.friend.create({
+      const friend = await prisma.friend.create({
         data: {
           requester_id: account.id,
           receiver_id: receiver.id,
@@ -196,7 +196,7 @@ export class FriendsService {
         },
       });
 
-      await this.prismaService.conversation.create({
+      await prisma.conversation.create({
         data: {
           title: `${friend.requester.first_name} ${friend.requester.last_name} and ${friend.receiver.first_name} ${friend.receiver.last_name}`,
           channel_id: account.id + receiver.id,
@@ -328,6 +328,15 @@ export class FriendsService {
     account: TAccountRequest,
     searchDto: FriendSearchDto,
   ): Promise<PagedResponse<FriendVm>> {
+    console.log('🔍 Friend search debug:', {
+      accountId: account.id,
+      search: searchDto.search,
+      searchFields: searchDto.searchFields,
+      status: searchDto.status,
+      page: searchDto.page,
+      size: searchDto.size
+    });
+
     // Define searchable fields for friend search
     const searchableFields = [
       'first_name',
@@ -344,63 +353,93 @@ export class FriendsService {
       receiverId: 'receiver_id'
     };
 
-    // Build the where clause
-    const where: Prisma.FriendWhereInput = {
-      AND: [
-        // Base condition - user is either requester or receiver
-        {
-          OR: [{ requester_id: account.id }, { receiver_id: account.id }],
-        },
-        // Apply search filter if search term is provided
-        searchDto.search && searchDto.searchFields?.length ? {
-          OR: [
-            {
-              requester: {
-                OR: searchDto.searchFields
-                  .filter(field => searchableFields.includes(fieldMapping[field] || field))
-                  .map(field => ({
-                    [fieldMapping[field] || field]: { contains: searchDto.search, mode: 'insensitive' }
-                  }))
-              },
-            },
-            {
-              receiver: {
-                OR: searchDto.searchFields
-                  .filter(field => searchableFields.includes(fieldMapping[field] || field))
-                  .map(field => ({
-                    [fieldMapping[field] || field]: { contains: searchDto.search, mode: 'insensitive' }
-                  }))
-              },
-            },
-          ],
-        } : searchDto.search ? {
-          OR: [
-            {
-              requester: {
-                OR: [
-                  { first_name: { contains: searchDto.search, mode: 'insensitive' } },
-                  { last_name: { contains: searchDto.search, mode: 'insensitive' } },
-                  { email: { contains: searchDto.search, mode: 'insensitive' } },
-                ],
-              },
-            },
-            {
-              receiver: {
-                OR: [
-                  { first_name: { contains: searchDto.search, mode: 'insensitive' } },
-                  { last_name: { contains: searchDto.search, mode: 'insensitive' } },
-                  { email: { contains: searchDto.search, mode: 'insensitive' } },
-                ],
-              },
-            },
-          ],
-        } : {},
-        // Apply status filter
-        {
-          ...(searchDto.status && { status: searchDto.status }),
-        }
-      ].filter(Boolean) as Prisma.FriendWhereInput[]
+    // Ensure searchFields is always an array
+    const searchFields = Array.isArray(searchDto.searchFields) ? searchDto.searchFields : [];
+
+    // Build the base where clause
+    const baseWhere: Prisma.FriendWhereInput = {
+      OR: [{ requester_id: account.id }, { receiver_id: account.id }],
     };
+
+    // Add status filter if provided
+    if (searchDto.status) {
+      baseWhere.status = searchDto.status;
+    }
+
+    // Add search filter if search term is provided
+    if (searchDto.search && searchDto.search.trim()) {
+      const searchTerm = searchDto.search.trim();
+      console.log('🔍 Search term:', searchTerm);
+      
+      // If specific search fields are provided, use them
+      if (searchFields.length > 0) {
+        const validSearchFields = searchFields
+          .filter(field => searchableFields.includes(fieldMapping[field] || field))
+          .map(field => fieldMapping[field] || field);
+
+        console.log('🔍 Valid search fields:', validSearchFields);
+
+        if (validSearchFields.length > 0) {
+          // Combine user filter with search filter
+          baseWhere.AND = [
+            { OR: [{ requester_id: account.id }, { receiver_id: account.id }] },
+            {
+              OR: [
+                {
+                  requester: {
+                    OR: validSearchFields.map(field => ({
+                      [field]: { contains: searchTerm, mode: 'insensitive' }
+                    }))
+                  },
+                },
+                {
+                  receiver: {
+                    OR: validSearchFields.map(field => ({
+                      [field]: { contains: searchTerm, mode: 'insensitive' }
+                    }))
+                  },
+                },
+              ],
+            }
+          ];
+          // Remove the original OR clause since we're using AND now
+          delete baseWhere.OR;
+        }
+      } else {
+        // Default search across all searchable fields
+        console.log('🔍 Using default search fields');
+        // Combine user filter with search filter
+        baseWhere.AND = [
+          { OR: [{ requester_id: account.id }, { receiver_id: account.id }] },
+          {
+            OR: [
+              {
+                requester: {
+                  OR: [
+                    { first_name: { contains: searchTerm, mode: 'insensitive' } },
+                    { last_name: { contains: searchTerm, mode: 'insensitive' } },
+                    { email: { contains: searchTerm, mode: 'insensitive' } },
+                  ],
+                },
+              },
+              {
+                receiver: {
+                  OR: [
+                    { first_name: { contains: searchTerm, mode: 'insensitive' } },
+                    { last_name: { contains: searchTerm, mode: 'insensitive' } },
+                    { email: { contains: searchTerm, mode: 'insensitive' } },
+                  ],
+                },
+              },
+            ],
+          }
+        ];
+        // Remove the original OR clause since we're using AND now
+        delete baseWhere.OR;
+      }
+    }
+
+    console.log('🔍 Final where clause:', JSON.stringify(baseWhere, null, 2));
 
     // Set default ordering if not provided
     let orderBy: Prisma.FriendOrderByWithRelationInput = { created_at: 'desc' };
@@ -435,7 +474,7 @@ export class FriendsService {
 
     const [friends, total] = await Promise.all([
       this.prismaService.friend.findMany({
-        where,
+        where: baseWhere,
         include: {
           requester: {
             select: {
@@ -460,8 +499,20 @@ export class FriendsService {
         skip,
         orderBy,
       }),
-      this.prismaService.friend.count({ where }),
+      this.prismaService.friend.count({ where: baseWhere }),
     ]);
+
+    console.log('🔍 Search results:', {
+      total,
+      found: friends.length,
+      friends: friends.map(f => ({
+        id: f.id,
+        status: f.status,
+        requester: `${f.requester.first_name} ${f.requester.last_name}`,
+        receiver: `${f.receiver.first_name} ${f.receiver.last_name}`,
+        isRequester: f.requester_id === account.id
+      }))
+    });
 
     // Handle name sorting in application layer if requested
     let sortedFriends = friends;

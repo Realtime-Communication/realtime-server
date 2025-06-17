@@ -22,17 +22,17 @@ function getRandomEnumValue(enumObj: any) {
 // Helper function to generate random user data
 function generateUserData(index: number, role: AccountRole = AccountRole.USER) {
   return {
-    email: `user${index}@example.com`,
+    email: `user${index}@user${index}.com`,
     phone: `123456789${index}`,
-    password: `user${index}@example.com`,
+    password: `useruser`,
     role: role,
     first_name: faker.person.firstName(),
     last_name: faker.person.lastName(),
     middle_name: faker.person.middleName(),
     level_left: faker.number.int({ min: 0, max: 5 }),
     level_right: faker.number.int({ min: 0, max: 5 }),
-    is_active: faker.datatype.boolean(),
-    is_blocked: faker.datatype.boolean(),
+    is_active: true,
+    is_blocked: false,
     preferences: JSON.stringify({
       theme: faker.helpers.arrayElement(['light', 'dark']),
       notifications: faker.datatype.boolean(),

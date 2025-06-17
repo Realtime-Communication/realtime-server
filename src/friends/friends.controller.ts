@@ -18,10 +18,14 @@ import {
   TAccountRequest,
 } from 'src/decorators/account-request.decorator';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
+import { PrismaService } from 'src/common/prisma/prisma.service';
 
 @Controller('friends')
 export class FriendsController {
-  constructor(private readonly friendsService: FriendsService) {}
+  constructor(
+    private readonly friendsService: FriendsService,
+    private readonly prismaService: PrismaService,
+  ) {}
 
   @Post()
   @ResponseMessage('Save message success')
@@ -38,6 +42,59 @@ export class FriendsController {
     @Query() searchDto: FriendSearchDto,
   ) {
     return this.friendsService.findAll(account, searchDto);
+  }
+
+  @Get('/debug/all')
+  async debugAllFriends(
+    @AccountRequest() account: TAccountRequest,
+  ) {
+    // Get all friends without any filters for debugging
+    const allFriends = await this.prismaService.friend.findMany({
+      where: {
+        OR: [{ requester_id: account.id }, { receiver_id: account.id }],
+      },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            is_active: true,
+          },
+        },
+        receiver: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            is_active: true,
+          },
+        },
+      },
+    });
+
+    return {
+      accountId: account.id,
+      totalFriends: allFriends.length,
+      friends: allFriends.map(f => ({
+        id: f.id,
+        status: f.status,
+        requester: {
+          id: f.requester.id,
+          name: `${f.requester.first_name} ${f.requester.last_name}`,
+          email: f.requester.email,
+        },
+        receiver: {
+          id: f.receiver.id,
+          name: `${f.receiver.first_name} ${f.receiver.last_name}`,
+          email: f.receiver.email,
+        },
+        isRequester: f.requester_id === account.id,
+        isReceiver: f.receiver_id === account.id,
+      }))
+    };
   }
 
   @Get('/requested')

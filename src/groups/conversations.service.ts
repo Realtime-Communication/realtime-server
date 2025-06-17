@@ -68,7 +68,7 @@ export class ConversationService {
     );
 
     // Create conversation with all participants
-    return await this.prismaService.conversation.create({
+    const conversation = await this.prismaService.conversation.create({
       data: {
         title: createConversationDto.title,
         channel_id: createConversationDto.channelId,
@@ -108,8 +108,25 @@ export class ConversationService {
             },
           },
         },
+        messages: {
+          where: { deleted_at: null },
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          include: {
+            sender: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    return this.toConversationVm(conversation);
   }
 
   async getConversationMessages(
