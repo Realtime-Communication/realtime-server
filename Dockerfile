@@ -10,6 +10,7 @@
   
   # Copy all source code and Prisma files
   COPY . .
+  ENV PRISMA_CLIENT_ENGINE_TYPE="binary"
   
   # Generate Prisma client based on schema
   RUN npx prisma generate
@@ -42,3 +43,4 @@
   
   # Run migrations and start the app
   CMD prisma migrate deploy && node dist/src/main
+

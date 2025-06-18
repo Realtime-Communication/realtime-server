@@ -100,24 +100,31 @@ export class FriendsService {
     return { success: true, message: 'User unblocked successfully' };
   }
 
-  async unfriendFriendRequest(account: TAccountRequest, friendShipRequestId: number) {
-    // Find the friend relationship
-    const friendRequest = await this.prismaService.friend.findUnique({
-      where: { id: friendShipRequestId },
+  async unfriendFriendRequest(account: TAccountRequest, friendId: number) {
+    // Find the friend relationship where the current user is either requester or receiver
+    // and the other user is the friendId
+    const friendRequest = await this.prismaService.friend.findFirst({
+      where: {
+        OR: [
+          {
+            requester_id: account.id,
+            receiver_id: friendId,
+          },
+          {
+            requester_id: friendId,
+            receiver_id: account.id,
+          },
+        ],
+      },
     });
 
     if (!friendRequest) {
       throw new NotFoundException('Friend relationship not found');
     }
 
-    // Check if the current user is part of this relationship
-    if (friendRequest.requester_id !== account.id && friendRequest.receiver_id !== account.id) {
-      throw new ForbiddenException('You are not authorized to perform this action');
-    }
-
     // Delete the friend relationship
     await this.prismaService.friend.delete({
-      where: { id: friendShipRequestId },
+      where: { id: friendRequest.id },
     });
 
     return { success: true, message: 'Friend removed successfully' };

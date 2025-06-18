@@ -178,8 +178,8 @@ export class FriendsController {
   @ResponseMessage('Friend request unfriended successfully')
   async unfriendFriendRequest(
     @AccountRequest() account: TAccountRequest,
-    @Param('id') friendShipRequestId: number
+    @Param('id') friendId: number
   ) {
-    return this.friendsService.unfriendFriendRequest(account, friendShipRequestId);
+    return this.friendsService.unfriendFriendRequest(account, friendId);
   }
 }
