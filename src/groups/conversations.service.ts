@@ -64,7 +64,7 @@ export class ConversationService {
 
     return { success: true, message: 'Conversation deleted successfully' };
   }
-  
+
   constructor(private readonly prismaService: PrismaService) { }
 
   private async validateParticipants(
@@ -512,7 +512,7 @@ export class ConversationService {
         id: conversationAction.conversationId,
         deleted_at: null,
         participants: {
-          some: { user_id: account.id, type: ParticipantType.LEAD },
+          some: { user_id: account.id},
         },
       },
       include: { participants: true },
@@ -562,7 +562,7 @@ export class ConversationService {
       },
     });
 
-    return {
+      return {
       success: true,
       message: 'Participant added successfully',
       participant: newParticipant,
