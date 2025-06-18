@@ -23,6 +23,24 @@ type FriendWithRelations = Prisma.FriendGetPayload<{
 
 @Injectable()
 export class FriendsService {
+  async cancelFriendRequest(account: TAccountRequest, friendShipRequestId: number) {
+    // Only the requester can cancel a friend request
+    const friendRequest = await this.prismaService.friend.findUnique({
+      where: { id: friendShipRequestId, requester_id: account.id, status: 'PENDING' },
+    });
+
+    if (!friendRequest) {
+      throw new NotFoundException('Friend request not found or already processed');
+    }
+
+    await this.prismaService.friend.delete({
+      where: { id: friendShipRequestId },
+    });
+
+    return { success: true, message: 'Friend request cancelled' };
+  }
+
+
   async rejectFriendRequest(account: TAccountRequest, friendShipRequestId: number) {
     // Only the receiver can reject a friend request
     const friendRequest = await this.prismaService.friend.findUnique({
@@ -33,11 +51,10 @@ export class FriendsService {
       throw new NotFoundException('Friend request not found or already processed');
     }
 
-    await this.prismaService.friend.update({
+    await this.prismaService.friend.delete({
       where: { id: friendShipRequestId },
-      data: { status: 'REJECTED' },
     });
-
+    
     return { success: true, message: 'Friend request rejected' };
   }
 
@@ -378,7 +395,7 @@ export class FriendsService {
     if (searchDto.search && searchDto.search.trim()) {
       const searchTerm = searchDto.search.trim();
       console.log('🔍 Search term:', searchTerm);
-      
+
       // If specific search fields are provided, use them
       if (searchFields.length > 0) {
         const validSearchFields = searchFields
@@ -453,11 +470,11 @@ export class FriendsService {
     let orderBy: Prisma.FriendOrderByWithRelationInput = { created_at: 'desc' };
     let shouldSortByName = false;
     let nameSortDirection: 'asc' | 'desc' = 'asc';
-    
+
     if (searchDto.order) {
       const [field, direction] = searchDto.order.split(',');
       const mappedField = fieldMapping[field] || field;
-      
+
       if (mappedField === 'name') {
         // For ordering by name, we'll handle it in the application layer
         shouldSortByName = true;

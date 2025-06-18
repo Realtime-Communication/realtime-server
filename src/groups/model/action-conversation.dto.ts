@@ -7,5 +7,4 @@ export class ConversationActionDto {
   targetUserId: number;
   @Type(() => Number)
   conversationId: number;
-
 }

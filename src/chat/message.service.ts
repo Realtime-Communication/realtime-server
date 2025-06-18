@@ -31,7 +31,7 @@ export class ChatService {
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      return;
     }
 
     const message = await this.prismaService.message.create({
@@ -129,7 +129,7 @@ export class ChatService {
     });
 
     if (!message) {
-      throw new Error('Message not found or access denied');
+      return;
     }
 
     // Check if user is message sender or conversation leader

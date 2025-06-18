@@ -97,6 +97,15 @@ export class GroupsController {
     });
   }
 
+  @Post("/delete")
+  async deleteConversation(
+    @AccountRequest() account: TAccountRequest,
+    @Body() actionDto: ConversationActionDto,
+  ) {
+    return await this.conversationService.deleteConversation(account, {
+      ...actionDto,
+    });
+  }
 
   @Post("/approve")
   async approveJoinConversation(

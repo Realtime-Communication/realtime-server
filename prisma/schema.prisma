@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider     = "postgresql"
-  url          = "postgresql://admin:adminpassword@postgres:5432/main_db"
+  url          = "postgresql://admin:adminpassword@localhost:5432/main_db"
   relationMode = "foreignKeys"
 } 
 
@@ -124,7 +124,7 @@ model Participant {
   verified_by     Int?              @default(autoincrement())
 
   // Relations
-  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([conversation_id, user_id])
@@ -144,7 +144,7 @@ model Message {
   message_status  MessageStatus
 
   // Relations
-  conversation     Conversation     @relation(fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  conversation     Conversation     @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sender           User             @relation(fields: [sender_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
   attachments      Attachment[]
   deleted_messages DeletedMessage[]
@@ -159,7 +159,7 @@ model Attachment {
   updated_at DateTime @updatedAt
 
   // Relations
-  message Message @relation(fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  message Message @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model DeletedMessage {
@@ -170,7 +170,7 @@ model DeletedMessage {
   updated_at DateTime @updatedAt
 
   // Relations
-  message Message @relation(fields: [message_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  message Message @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   user    User    @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 
@@ -181,7 +181,7 @@ model DeletedConversation {
   created_at      DateTime @default(now())
 
   // Relations
-  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   user         User         @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 }
 

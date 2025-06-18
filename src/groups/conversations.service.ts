@@ -23,7 +23,49 @@ import { TAccountRequest } from 'src/decorators/account-request.decorator';
 
 @Injectable()
 export class ConversationService {
-  constructor(private readonly prismaService: PrismaService) {}
+  async deleteConversation(account: TAccountRequest, arg1: { targetUserId: number; conversationId: number; }) {
+    const conversation = await this.prismaService.conversation.findFirst({
+      where: {
+        id: arg1.conversationId,
+        deleted_at: null,
+        participants: {
+          some: {
+            user_id: account.id,
+          },
+        },
+      },
+      include: {
+        participants: {
+          where: {
+            user_id: account.id,
+            conversation_id: arg1.conversationId
+          },
+          take: 1
+        }
+      },
+    });
+
+    if (!conversation || conversation.participants.length === 0) {
+      throw new NotFoundException('Conversation not found or you are not a participant');
+    }
+
+    // Get the current participant from the conversation
+    const currentParticipant = conversation.participants[0];
+    const isLeader = currentParticipant?.type === 'LEAD';
+
+    if (!isLeader || !currentParticipant) {
+      throw new ForbiddenException('Only conversation leaders can delete conversations');
+    }
+
+    // Delete conversation
+    await this.prismaService.conversation.delete({
+      where: { id: conversation.id },
+    });
+
+    return { success: true, message: 'Conversation deleted successfully' };
+  }
+  
+  constructor(private readonly prismaService: PrismaService) { }
 
   private async validateParticipants(
     participants: { userId: number; type: 'LEAD' | 'MEMBER' }[],
@@ -227,11 +269,11 @@ export class ConversationService {
       status: message.message_status,
       user: message.sender
         ? {
-            id: message.sender.id,
-            firstName: message.sender.first_name,
-            lastName: message.sender.last_name,
-            email: message.sender.email,
-          }
+          id: message.sender.id,
+          firstName: message.sender.first_name,
+          lastName: message.sender.last_name,
+          email: message.sender.email,
+        }
         : undefined,
       attachments: message.attachments?.map((att) => ({
         id: att.id,
@@ -269,36 +311,36 @@ export class ConversationService {
         type: p.type.toLowerCase() as 'LEAD' | 'MEMBER',
         user: p.user
           ? {
-              id: p.user.id,
-              firstName: p.user.first_name,
-              lastName: p.user.last_name,
-              email: p.user.email,
-              isActive: p.user.is_active,
-            }
+            id: p.user.id,
+            firstName: p.user.first_name,
+            lastName: p.user.last_name,
+            email: p.user.email,
+            isActive: p.user.is_active,
+          }
           : null,
       })),
       lastMessage: conversation.messages?.[0]
         ? {
-            id: conversation.messages[0].id,
-            guid: conversation.messages[0].guid,
-            conversationId: conversation.messages[0].conversation_id,
-            senderId: conversation.messages[0].sender_id,
-            messageType: conversation.messages[0].message_type,
-            content: conversation.messages[0].content,
-            createdAt: conversation.messages[0].created_at,
-            deletedAt: conversation.messages[0].deleted_at,
-            callType: conversation.messages[0].call_type,
-            callStatus: conversation.messages[0].call_status,
-            status: conversation.messages[0].message_status,
-            user: conversation.messages[0].user
-              ? {
-                  id: conversation.messages[0].user.id,
-                  firstName: conversation.messages[0].user.first_name,
-                  lastName: conversation.messages[0].user.last_name,
-                  email: conversation.messages[0].user.email,
-                }
-              : undefined,
-          }
+          id: conversation.messages[0].id,
+          guid: conversation.messages[0].guid,
+          conversationId: conversation.messages[0].conversation_id,
+          senderId: conversation.messages[0].sender_id,
+          messageType: conversation.messages[0].message_type,
+          content: conversation.messages[0].content,
+          createdAt: conversation.messages[0].created_at,
+          deletedAt: conversation.messages[0].deleted_at,
+          callType: conversation.messages[0].call_type,
+          callStatus: conversation.messages[0].call_status,
+          status: conversation.messages[0].message_status,
+          user: conversation.messages[0].user
+            ? {
+              id: conversation.messages[0].user.id,
+              firstName: conversation.messages[0].user.first_name,
+              lastName: conversation.messages[0].user.last_name,
+              email: conversation.messages[0].user.email,
+            }
+            : undefined,
+        }
         : null,
     };
   }

@@ -153,7 +153,16 @@ export class FriendsController {
     @AccountRequest() account: TAccountRequest,
     @Param('id') friendShipRequestId: number
   ) {
-    return this.friendsService.rejectFriendRequest(account, friendShipRequestId);
+    return this.  friendsService.rejectFriendRequest(account, friendShipRequestId);
+  }
+
+  @Post('/:id/cancel')
+  @ResponseMessage('Friend request cancelled successfully')
+  async cancelFriendRequest(
+    @AccountRequest() account: TAccountRequest,
+    @Param('id') friendShipRequestId: number
+  ) {
+    return this.friendsService.cancelFriendRequest(account, friendShipRequestId);
   }
 
   @Post('/:id/block')
