@@ -612,8 +612,7 @@ export class ConversationService {
     account: TAccountRequest,
     {
       conversationId,
-      actionType,
-    }: { conversationId: number; actionType: ConversationActionType },
+    }: { conversationId: number },
   ): Promise<{ success: boolean; message: string; participant: any }> {
     // Verify the conversation exists and is not deleted
     const conversation = await this.prismaService.conversation.findFirst({
@@ -687,11 +686,9 @@ export class ConversationService {
     {
       conversationId,
       targetUserId,
-      actionType,
     }: {
       conversationId: number;
       targetUserId: number;
-      actionType: ConversationActionType;
     },
   ): Promise<{ success: boolean; message: string; participant: any }> {
     // First verify that the approver (account) is a LEAD of the conversation

@@ -53,73 +53,58 @@ export class GroupsController {
     });
   } 
 
-  @Post('/:id/kick')
+  @Post('/kick')
   async kickParticipant(
-    @Param() id: number,
     @AccountRequest() account: TAccountRequest,
     @Body() actionDto: ConversationActionDto,
   ) {
-    if (actionDto.actionType !== ConversationActionType.KICK) {
-      throw new Error('Invalid action type');
-    }
+    // if (actionDto.actionType !== ConversationActionType.KICK) {
+    //   throw new Error('Invalid action type');
+    // }
 
     return await this.conversationService.kickParticipant(account, {
       ...actionDto,
-      conversationId: id,
     });
   }
 
-  @Post('/:id/add')
+  @Post('/add')
   async manageParticipant(
-    @Param() id: number,
     @AccountRequest() account: TAccountRequest,
     @Body() actionDto: ConversationActionDto,
   ) {
-    switch (actionDto.actionType) {
-      case ConversationActionType.ADD:
-        return await this.conversationService.addParticipant(account, {
-          ...actionDto,
-          conversationId: id,
-        });
-      default:
-        throw new Error('Invalid action type');
-    }
+    return await this.conversationService.addParticipant(account, {
+      ...actionDto,
+    });
   }
 
-  @Post(':id/leave')
+  @Post('/leave')
   async leaveConversation(
     @AccountRequest() account: TAccountRequest,
-    @Param('id') id: number,
     @Body() actionDto: ConversationActionDto,
   ) {
     return await this.conversationService.leaveConversation(account, {
       ...actionDto,
-      conversationId: id,
     });
   }
 
-  @Post(":id/join")
+  @Post("/join")
   async joinConversation(
     @AccountRequest() account: TAccountRequest,
-    @Param('id') id: number,
     @Body() actionDto: ConversationActionDto,
   ) {
     return await this.conversationService.joinConversation(account, {
       ...actionDto,
-      conversationId: id,
     });
   }
 
 
-  @Post(":id/approve")
+  @Post("/approve")
   async approveJoinConversation(
     @AccountRequest() account: TAccountRequest,
-    @Param('id') id: number,
     @Body() actionDto: ConversationActionDto,
   ) {
     return await this.conversationService.approveJoinConversation(account, {
       ...actionDto,
-      conversationId: id,
     });
   }
 }

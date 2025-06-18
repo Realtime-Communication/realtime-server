@@ -366,6 +366,7 @@ export class FriendsService {
     // Build the base where clause
     const baseWhere: Prisma.FriendWhereInput = {
       OR: [{ requester_id: account.id }, { receiver_id: account.id }],
+      status: { not: 'REJECTED' }
     };
 
     // Add status filter if provided

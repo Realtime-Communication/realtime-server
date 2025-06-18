@@ -25,7 +25,7 @@ export class FriendsController {
   constructor(
     private readonly friendsService: FriendsService,
     private readonly prismaService: PrismaService,
-  ) {}
+  ) { }
 
   @Post()
   @ResponseMessage('Save message success')
@@ -178,8 +178,7 @@ export class FriendsController {
   @ResponseMessage('Friend request unfriended successfully')
   async unfriendFriendRequest(
     @AccountRequest() account: TAccountRequest,
-    @Param('id') friendId: number
-  ) {
+    @Param('id') friendId: number) {
     return this.friendsService.unfriendFriendRequest(account, friendId);
   }
 }
