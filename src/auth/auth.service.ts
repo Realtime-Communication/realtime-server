@@ -52,16 +52,7 @@ export class AuthService {
       },
     });
 
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      phone: user.phone,
-      middleName: user.middle_name,
-      isActive: user.is_active,
-      role: user.role,
-    };
+    return user;
   }
 
   async validateUser(
@@ -148,5 +139,15 @@ export class AuthService {
         isActive: user.is_active,
       },
     };
+  }
+
+  /**
+   * Simple logout - In a stateless JWT system, the client should discard the token
+   * This is a placeholder for any future cleanup that might be needed
+   */
+  async logout(): Promise<{ message: string }> {
+    // In a stateless JWT system, the client should discard the token
+    // If you need to invalidate tokens, you would need to implement a token blacklist
+    return { message: 'Logout successful' };
   }
 }

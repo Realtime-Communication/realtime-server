@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider     = "postgresql"
-  url          = "postgresql://admin:adminpassword@postgres:5432/main_db"
+  url          = "postgresql://admin:adminpassword@localhost:5432/main_db"
   relationMode = "foreignKeys"
 } 
 

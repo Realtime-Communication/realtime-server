@@ -23,70 +23,78 @@ import { UsersModule } from './users/users.module';
 import { ChatModule } from './chat/realtime.module';
 import { AllExceptionsFilter } from './exception/global.exception';
 
-class CallChatApplication {
-  public static async bootstrap(args: string[]): Promise<void> {
-    const app = await NestFactory.create<NestExpressApplication>(AppModule);
-    const configService = app.get(ConfigService);
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const configService = app.get(ConfigService);
+  const reflector = app.get(Reflector);
 
-    // Redis Caching Websocket
-    // const redisIoAdapter = new RedisIoAdapter(app);
-    // await redisIoAdapter.connectToRedis();
-    // app.useWebSocketAdapter(redisIoAdapter);
-    // async () => {
-    //   redisClient.on('error', async () => await redisClient.connect());
-    //   redisClient.on('disconnect', async () => {
-    //     console.log('Disconnect');
-    //     await redisClient.connect();
-    //   });
-    //   await redisClient.connect();
-    // };
+  // Enable CORS
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
 
-    // Swagger
-    const config = new DocumentBuilder()
-      .setTitle('Talk Together')
-      .setDescription('API Description')
-      .setVersion('1.0')
-      .build();
+  // Setup Swagger
+  const config = new DocumentBuilder()
+    .setTitle('Chat-Chit API')
+    .setDescription('Real-time chat application API documentation')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .build();
 
-    const options: SwaggerDocumentOptions = {
-      deepScanRoutes: true,
-      ignoreGlobalPrefix: true,
-      operationIdFactory: (controllerKey: string, methodKey: string) =>
-        methodKey,
-    };
-    const document = SwaggerModule.createDocument(app, config, options);
-    SwaggerModule.setup('api', app, document);
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+  });
 
-    app.enableCors();
+  // Global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
-    // --- API Versioning
-    // app.setGlobalPrefix('api');
-    // app.enableVersioning({
-    //   type: VersioningType.URI,
-    //   defaultVersion: ['1'],
-    // });
+  // Global guards
+  app.useGlobalGuards(new JwtAuthGuard(reflector));
+  app.useGlobalGuards(new RolesGuard(reflector));
 
-    // Template engine
-    // app.useStaticAssets(join(__dirname, '..', 'public'));
-    // app.setBaseViewsDir(join(__dirname, '..', 'views'));
-    // app.setViewEngine('ejs');
+  // Global interceptors
+  app.useGlobalInterceptors(new TransformInterceptor(reflector));
 
-    // Reflector & metatdata, Guards, Interceptor
-    const reflector = app.get(Reflector);
-    app.useGlobalPipes(
-      new ValidationPipe({
-        transform: true, // <- this is critical
-      }),
-    );
+  // Global filters
+  app.useGlobalFilters(new AllExceptionsFilter());
 
-    // app.useGlobalGuards(new RolesGuard(reflector));
-    app.useGlobalFilters(new AllExceptionsFilter());
-    app.useGlobalGuards(new JwtAuthGuard(reflector));
-    app.useGlobalInterceptors(new TransformInterceptor(reflector));
+  // API Versioning
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
 
-    await app.listen(configService.get<string>('PORT'));
+  // Set global prefix
+  // app.setGlobalPrefix('api');
 
-  }
+  // Start the application
+  const port = configService.get<number>('PORT') || 8000;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}/api`);
 }
 
-CallChatApplication.bootstrap(['Chat App V1']);
+bootstrap().catch(err => {
+  console.error('Error starting the application', err);
+  process.exit(1);
+});

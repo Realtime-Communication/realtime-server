@@ -1,4 +1,4 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, Scope } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -12,10 +12,13 @@ import {
   MessageType,
 } from '@prisma/client';
 import * as crypto from 'crypto';
+import { MessageVm } from './dto/message.vm';
+import { UpdateMessageDto } from './dto/update-message.dto';
+import { PaginatedResponse } from 'src/common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
 
   async saveMessage(account: TAccountRequest, messageDto: MessageDto) {
     const conversation = await this.prismaService.conversation.findFirst({
@@ -46,11 +49,11 @@ export class ChatService {
         message_status: messageDto.status || MessageStatus.SENT,
         attachments: messageDto.attachments
           ? {
-              create: messageDto.attachments.map((attachment) => ({
-                thumb_url: attachment.thumbUrl,
-                file_url: attachment.fileUrl,
-              })),
-            }
+            create: messageDto.attachments.map((attachment) => ({
+              thumb_url: attachment.thumbUrl,
+              file_url: attachment.fileUrl,
+            })),
+          }
           : undefined,
       },
       include: {
@@ -272,130 +275,118 @@ export class ChatService {
     return call;
   }
 
-  // async getMyChats(user_id: string) {
-  //   try {
-  //     const chats = await this.chatModel
-  //       .find({
-  //         $or: [{ from_id: user_id }, { to_id: user_id }],
-  //         deleted: false,
-  //       })
-  //       .sort({ createdAt: 'asc' });
-  //     return chats;
-  //   } catch (error) {
-  //     return this.helpersService.responseError(
-  //       `cannot find chat of user ${user_id}`,
-  //     );
-  //   }
-  // }
+  async getMessagesByConversation(
+    userId: number,
+    conversationId: number,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<PaginatedResponse<MessageVm>> {
+    await this.verifyConversationAccess(userId, conversationId);
 
-  // async conversations(user: IUser) {
-  //   try {
-  //     const friends = await this.usersService.friends(user);
-  //     const conversations = await this.groupsService.myGroups(user);
-  //     const result = [...[friends], ...[conversations]];
-  //     return result;
-  //   } catch (error) {
-  //     return this.helpersService.responseError(
-  //       'cannot get all friend at chat service',
-  //     );
-  //   }
-  // }
+    const skip = (page - 1) * limit;
+    const [total, messages] = await Promise.all([
+      this.prismaService.message.count({
+        where: { conversation_id: conversationId },
+      }),
+      this.prismaService.message.findMany({
+        where: { conversation_id: conversationId },
+        include: { attachments: true },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
 
-  // @ResponseMessage('Get chat with friend or group')
-  // async getChatWithId(
-  //   to_id: string,
-  //   limit: number,
-  //   userId: mongoose.Schema.Types.ObjectId,
-  // ) {
-  //   try {
-  //     const otherPerson = await this.usersService.findOne(to_id);
-  //     const group = await this.groupsService.findOne(to_id);
-  //     const chats = otherPerson
-  //       ? await this.chatModel
-  //           .find({
-  //             $or: [
-  //               { $and: [{ from_id: to_id }, { to_id: userId }] },
-  //               { $and: [{ from_id: userId }, { to_id: to_id }] },
-  //             ],
-  //             deleted: false,
-  //           })
-  //           .sort({ createdAt: 'desc' })
-  //           .limit(limit)
-  //           .then((data) => data.reverse())
-  //       : await this.chatModel
-  //           .find({
-  //             to_id: to_id,
-  //             deleted: false,
-  //           })
-  //           .sort({ createdAt: 'desc' })
-  //           .limit(limit)
-  //           .then((data) => data.reverse());
-  //     return {
-  //       chats,
-  //       otherName: otherPerson ? otherPerson['name'] : group['name'],
-  //       otherImage: otherPerson ? otherPerson['image'] : group['image'],
-  //     };
-  //   } catch (error) {
-  //     return error;
-  //   }
-  // }
+    return {
+      data: messages.map(message => this.mapToMessageResponse(message)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 
-  // async getChatGlobal(userId: any) {
-  //   try {
-  //     return [];
-  //   } catch (error) {
-  //     return this.helpersService.responseError(
-  //       'cannot get chat global before !',
-  //     );
-  //   }
-  // }
+  async getMessage(userId: number, messageId: number): Promise<MessageVm> {
+    const message = await this.prismaService.message.findUnique({
+      where: { id: messageId },
+      include: { attachments: true },
+    });
 
-  // async getLastChats(user: IUser) {
-  //   try {
-  //     const userId = user._id;
-  //     const myGroups = await this.groupsService.idsMyGroups(user);
-  //     const groupIds = myGroups.map((item: any) => item._id);
-  //     const friendIds = await this.userModel.distinct('_id');
-  //     const ids = [[...friendIds], [...groupIds]];
-  //     const resultId = [];
-  //     const resultObj = [];
-  //     for (const key in ids) {
-  //       for (const id of ids[key]) {
-  //         const [lastRecord] = await this.chatModel
-  //           .find({
-  //             $or:
-  //               key == '0'
-  //                 ? [
-  //                     { from_id: userId, to_id: id },
-  //                     { from_id: id, to_id: userId },
-  //                   ]
-  //                 : [{ to_id: id }],
-  //             deleted: false,
-  //           })
-  //           .sort({ createdAt: 'desc' })
-  //           .limit(1)
-  //           .select('from_id content from msgTime');
-  //         resultId.push(id);
-  //         resultObj.push(lastRecord);
-  //       }
-  //     }
-  //     return [resultId, resultObj];
-  //   } catch (error) {
-  //     this.helpersService.responseError(
-  //       'cannot get last chat of another friends !',
-  //     );
-  //   }
-  // }
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
 
-  // async deleteChat(id: string) {
-  //   try {
-  //     return await this.chatModel.updateOne(
-  //       { _id: id },
-  //       { $set: { deleted: true },
-  //     );
-  //   } catch (error) {
-  //     console.log('delete msg error');
-  //     return this.helpersService.responseError('cannot delete message');
-  //   }
-  // }
+    await this.verifyConversationAccess(userId, message.conversation_id);
+
+    return this.mapToMessageResponse(message);
+  }
+
+  async updateMessage(
+    userId: number,
+    messageId: number,
+    updateMessageDto: UpdateMessageDto
+  ): Promise<MessageVm> {
+    const message = await this.prismaService.message.findUnique({
+      where: { id: messageId },
+      include: { attachments: true },
+    });
+
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.sender_id !== userId) {
+      throw new ForbiddenException('You can only update your own messages');
+    }
+
+    const updatedMessage = await this.prismaService.message.update({
+      where: { id: messageId },
+      data: {
+        content: updateMessageDto.content,
+        message_status: updateMessageDto.status,
+        deleted_at: updateMessageDto.deleted_at,
+      },
+      include: { attachments: true },
+    });
+
+    return this.mapToMessageResponse(updatedMessage);
+  } 
+
+  private async verifyConversationAccess(userId: number, conversationId: number): Promise<boolean> {
+    const participant = await this.prismaService.participant.findFirst({
+      where: {
+        user_id: userId,
+        conversation_id: conversationId,
+      },
+    });
+
+    if (!participant) {
+      throw new ForbiddenException('You do not have access to this conversation');
+    }
+
+    return true;
+  }
+
+  private mapToMessageResponse(message: any): MessageVm  {
+    return {
+      id: message.id,
+      guid: message.guid,
+      conversationId: message.conversation_id,
+      senderId: message.sender_id,
+      messageType: message.message_type,
+      content: message.content,
+      callType: message.call_type,
+      callStatus: message.call_status,
+      status: message.message_status,
+      createdAt: message.created_at,
+      deletedAt: message.deleted_at,
+      attachments: message.attachments?.map(attachment => ({
+        id: attachment.id,
+        thumbUrl: attachment.thumb_url,
+        fileUrl: attachment.file_url,
+      })) || [],
+    };
+  }
 }

@@ -12,9 +12,7 @@ import { Inject, UseGuards } from '@nestjs/common';
 import { CacheManager } from './cache.service';
 import {
   MessageDto,
-  TargetType,
   CallDto,
-  CallResponseDto,
 } from './dto/create-message.dto';
 import { UserService } from 'src/users/users.service';
 import { FriendsService } from 'src/friends/friends.service';

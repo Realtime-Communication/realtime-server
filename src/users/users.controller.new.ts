@@ -8,28 +8,30 @@ import {
   Post,
   ParseIntPipe,
   ForbiddenException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { UserService } from './users.service';
-import {
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiBadRequestResponse,
-} from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserVm } from './users.vm';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { AccountRequest, TAccountRequest } from 'src/decorators/account-request.decorator';
+import { ResponseMessage } from 'src/decorators/response-message.decorator';
 import {
-  AccountRequest,
-  TAccountRequest,
-} from 'src/decorators/account-request.decorator';
-import { ApiBearerAuth } from '@nestjs/swagger';
-import { HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiUnauthorizedResponse, ApiForbiddenResponse, ApiNotFoundResponse } from '@nestjs/swagger';
-import { ResponseMessage } from 'src/decorators/response-message.decorator';    
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+
 @ApiTags('users')
 @Controller('users')
 @ApiBearerAuth('JWT-auth')
@@ -49,16 +51,31 @@ export class UsersController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  @ResponseMessage('Get current user information success')
   async getCurrentUser(@AccountRequest() account: TAccountRequest) {
     return await this.userService.findOne(account.id);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get user by ID' })
-  @ApiOkResponse({ type: UserVm, description: 'Returns the user information' })
-  @ApiResponse({ status: 403, description: 'You can only view your own information' })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Get user by ID',
+    description: 'Retrieves user information by user ID.'
+  })
+  @ApiParam({ 
+    name: 'id',
+    type: Number,
+    description: 'User ID',
+    example: 1
+  })
+  @ApiOkResponse({ 
+    description: 'Successfully retrieved user information',
+    type: UserVm 
+  })
+  @ApiForbiddenResponse({ 
+    description: 'You can only view your own information' 
+  })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({ description: 'Invalid user ID' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @AccountRequest() account: TAccountRequest,
@@ -71,29 +88,31 @@ export class UsersController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Update user information' })
-  @ApiCreatedResponse({
-    type: UserVm,
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Update user information',
+    description: 'Updates the current user\'s information.'
+  })
+  @ApiBody({ 
+    type: UpdateUserDto,
+    description: 'User data to update',
+  })
+  @ApiOkResponse({
     description: 'User information updated successfully',
+    type: UserVm,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input or email/phone already taken',
+  @ApiBadRequestResponse({ 
+    description: 'Invalid input or email/phone already taken'
   })
-  @ApiResponse({
-    status: 403,
-    description: 'You can only update your own information',
+  @ApiForbiddenResponse({
+    description: 'You can only update your own information'
   })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   async update(
-    // @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
     @AccountRequest() account: TAccountRequest,
   ) {
-    // Only allow users to update their own information
-    // if (id !== account.id) {
-    //   throw new ForbiddenException('You can only update your own information');
-    // }
     return await this.userService.update(account.id, updateUserDto);
   }
 
@@ -128,29 +147,6 @@ export class UsersController {
     @Body() changePasswordDto: ChangePasswordDto,
     @AccountRequest() account: TAccountRequest,
   ) {
-    // Only allow users to change their own password
-    // if (account.id !== changePasswordDto.id) {
-    //   throw new ForbiddenException('You can only change your own password');
-    // }
-    await this.userService.changePassword(account.id, changePasswordDto);
-    return { message: 'Password changed successfully' };
-  }
-
-  @Delete('')
-  @ApiOperation({ summary: 'Delete user' })
-  @ApiOkResponse({ type: UserVm, description: 'User deleted successfully' })
-  @ApiResponse({
-    status: 403,
-    description: 'You can only delete your own account',
-  })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  async remove(
-    @AccountRequest() account: TAccountRequest,
-  ) {
-    // Only allow users to delete their own account
-    // if (id !== account.id) {
-    //   throw new ForbiddenException('You can only delete your own account');
-    // }
-    return await this.userService.remove(account.id);
+    return await this.userService.changePassword(account.id, changePasswordDto);
   }
 }
