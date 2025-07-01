@@ -1,3 +1,38 @@
+// This file will be gradually updated as we migrate to Clean Architecture
+
+// Clean Architecture Components
+// ----------------------------
+// Main module
+export { ChatModule } from './chat.module';
+
+// Domain Layer
+export { Message, MessageAttachment } from './domain/entities/message.entity';
+export { UserPresence as CleanUserPresence, PresenceStatus } from './domain/entities/user-presence.entity';
+export { MessageRepository } from './domain/repositories/message.repository';
+export { CacheRepository, UserRelationshipGraph as CleanUserGraph, RoomMembership as CleanRoomMembership } from './domain/repositories/cache.repository';
+export { 
+  MessageQueueRepository,
+  EventType,
+  PriorityLevel,
+  EventBase,
+  CallType as CleanCallType
+} from './domain/repositories/message-queue.repository';
+
+// Application Layer
+export { MessageCommandService } from './application/commands/message.commands';
+export { MessageQueryService } from './application/queries/message.queries';
+
+// Infrastructure Layer
+export { PrismaMessageRepository } from './infrastructure/persistence/prisma-message.repository';
+export { RedisCacheRepository } from './infrastructure/cache/redis-cache.repository';
+export { WebSocketConfig as NewWebSocketConfig } from './infrastructure/websocket/websocket.config';
+
+// Interface Layer
+export { MessageController as NewMessageController } from './interfaces/http/message.controller';
+export { AuthenticatedSocket as NewAuthenticatedSocket } from './interfaces/websocket/types/authenticated-socket.interface';
+
+// Legacy Components (to be gradually migrated)
+// -------------------------------------------
 // Gateway
 export { ChatGateway } from './realtime.gateway';
 
@@ -24,7 +59,7 @@ export { ConnectionHandler } from './handlers/connection.handler';
 // Guards
 export { WsJwtGuard } from './ws.guard';
 
-// Controllers
+// Legacy Controllers
 export { MessageController } from './message.controller';
 
 // DTOs
@@ -39,7 +74,7 @@ export * from './interfaces/authenticated-socket.interface';
 // Utils
 export { RoomUtil } from './utils/room.util';
 
-// Config
+// Legacy Config
 export { WebSocketConfig } from './config/websocket.config';
 
 // Types
@@ -62,5 +97,5 @@ export type {
   PerformanceMetrics
 } from './monitoring/performance.service';
 
-// Module
-export { ChatModule } from './realtime.module'; 
+// Legacy Module
+export { ChatModule as RealtimeModule } from './realtime.module';
