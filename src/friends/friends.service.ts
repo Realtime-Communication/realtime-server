@@ -857,4 +857,20 @@ export class FriendsService {
       },
     };
   }
+
+  /**
+   * Check if a user is a member of a group
+   */
+  async isUserInGroup(userId: number, groupId: number): Promise<boolean> {
+    const participant = await this.prismaService.participant.findFirst({
+      where: {
+        user_id: userId,
+        conversation_id: groupId,
+        conversation: {
+          deleted_at: null,
+        },
+      },
+    });
+    return !!participant;
+  }
 }
