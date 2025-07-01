@@ -15,6 +15,8 @@ import { ConnectionHandler } from './handlers/connection.handler';
 import { WebSocketSecurityService } from './websocket-security.service';
 import { PresenceService } from './services/presence.service';
 import { WebSocketEventService } from './services/websocket-event.service';
+import { MessageQueueService } from './queue/message-queue.service';
+import { EventProcessor } from './processors/event.processor';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
 import { WebSocketConfig } from './config/websocket.config';
 
@@ -28,24 +30,38 @@ import { WebSocketConfig } from './config/websocket.config';
     ThrottlerModule.forRoot([WebSocketConfig.throttle]),
   ],
   providers: [
+    // Gateway
     ChatGateway,
+    
+    // Core Services
     ChatService,
     CacheManager,
-    WsJwtGuard,
+    WebSocketSecurityService,
+    PresenceService,
+    WebSocketEventService,
+    
+    // Queue and Processing
+    MessageQueueService,
+    EventProcessor,
+    
+    // Handlers
     MessageHandler,
     CallHandler,
     ConnectionHandler,
-    WebSocketSecurityService,
-    PresenceService,
-    WebSocketEventService,
+    
+    // Guards
+    WsJwtGuard,
   ],
   controllers: [MessageController],
   exports: [
+    // Core services for other modules
     ChatService,
     CacheManager,
     WebSocketSecurityService,
     PresenceService,
     WebSocketEventService,
+    MessageQueueService,
+    EventProcessor,
   ],
 })
 export class ChatModule {}

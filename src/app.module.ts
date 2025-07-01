@@ -23,6 +23,7 @@ import { UsersModule } from './users/users.module';
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
     }),
 
     // Database and Cache
@@ -37,6 +38,8 @@ import { UsersModule } from './users/users.module';
           password: configService.get('REDIS_PASSWORD', 'mypassword'),
           retryStrategy: (times: number) => Math.min(times * 50, 2000),
           maxRetriesPerRequest: 3,
+          lazyConnect: true,
+          connectTimeout: 10000,
         },
       }),
       inject: [ConfigService],
@@ -62,4 +65,4 @@ import { UsersModule } from './users/users.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

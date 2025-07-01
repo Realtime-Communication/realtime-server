@@ -1,12 +1,19 @@
 // Gateway
 export { ChatGateway } from './realtime.gateway';
 
-// Services
+// Core Services
 export { ChatService } from './message.service';
 export { CacheManager } from './cache.service';
 export { WebSocketSecurityService } from './websocket-security.service';
 export { PresenceService } from './services/presence.service';
 export { WebSocketEventService } from './services/websocket-event.service';
+
+// Queue and Processing
+export { MessageQueueService } from './queue/message-queue.service';
+export { EventProcessor } from './processors/event.processor';
+
+// Monitoring
+export { PerformanceService } from './monitoring/performance.service';
 
 // Handlers
 export { BaseHandler } from './handlers/base.handler';
@@ -34,6 +41,26 @@ export { RoomUtil } from './utils/room.util';
 
 // Config
 export { WebSocketConfig } from './config/websocket.config';
+
+// Types
+export type { 
+  QueuedEvent, 
+  MessageEvent, 
+  CallEvent 
+} from './queue/message-queue.service';
+
+export type {
+  UserRelationshipGraph,
+  RoomMembership
+} from './cache.service';
+
+export type {
+  UserPresence
+} from './services/presence.service';
+
+export type {
+  PerformanceMetrics
+} from './monitoring/performance.service';
 
 // Module
 export { ChatModule } from './realtime.module'; 
