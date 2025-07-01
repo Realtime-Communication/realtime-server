@@ -129,7 +129,7 @@ export class ChatGateway
           conversationType: messageDto.conversationType,
           content: messageDto.content,
           messageType: messageDto.messageType,
-          attachments: messageDto.attachments,
+          attachments: messageDto.attachments as any,
         }
       );
 
@@ -226,6 +226,7 @@ export class ChatGateway
           conversationId: messageDto.conversationId,
           conversationType: messageDto.conversationType,
           isTyping: true,
+          timestamp: new Date(),
         }
       );
     } catch (error) {
@@ -248,6 +249,7 @@ export class ChatGateway
           messageId: deleteDto.messageId,
           conversationId: deleteDto.conversationId,
           conversationType: deleteDto.conversationType,
+          deleteForEveryone: true,
         },
         timestamp: new Date(),
         priority: 5,
@@ -328,7 +330,8 @@ export class ChatGateway
         socketId: client.id,
         data: {
           status: data.status,
-          activity: data.activity,
+          lastSeen: new Date(),
+          customMessage: data.activity,
         },
         timestamp: new Date(),
         priority: 3,

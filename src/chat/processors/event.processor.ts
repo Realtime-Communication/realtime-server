@@ -8,6 +8,8 @@ import { PresenceService } from '../services/presence.service';
 import { WebSocketEventService } from '../services/websocket-event.service';
 import { ConversationType } from 'src/groups/model/conversation.vm';
 import * as crypto from 'crypto';
+import { MessageDto } from '../dto/create-message.dto';
+import { CallDto } from '../dto/create-message.dto';
 
 @Injectable()
 export class EventProcessor implements OnModuleInit {
@@ -164,7 +166,7 @@ export class EventProcessor implements OnModuleInit {
     // Save message to database
     const savedMessage = await this.chatService.saveMessage(
       { id: userId } as any,
-      data
+      data as MessageDto
     );
 
     if (!savedMessage) {
@@ -232,7 +234,7 @@ export class EventProcessor implements OnModuleInit {
     }
 
     // Create call record in database
-    await this.chatService.handleCall({ id: userId } as any, data);
+    await this.chatService.handleCall({ id: userId } as any, data as CallDto);
 
     // Broadcast call to target users
     await this.eventService.emitToConversation(
