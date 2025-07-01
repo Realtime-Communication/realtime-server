@@ -102,6 +102,9 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
    * Setup RabbitMQ channels, exchanges, and queues
    */
   private async setupChannel(channel: any): Promise<void> {
+    // Set prefetch count for load balancing
+    await channel.prefetch(10);
+    
     // Declare exchanges
     await channel.assertExchange(this.EXCHANGES.EVENTS, 'topic', { durable: true });
     await channel.assertExchange(this.EXCHANGES.DIRECT, 'direct', { durable: true });
@@ -147,8 +150,7 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
    * Setup queue consumers
    */
   private async setupQueues(): Promise<void> {
-    // Set prefetch count for load balancing
-    await this.consumerChannel.prefetch(10);
+    // Prefetch is now handled in setupChannel
   }
 
   /**
@@ -176,7 +178,7 @@ export class MessageQueueService implements OnModuleInit, OnModuleDestroy {
             userId: event.userId,
             eventType: event.eventType,
           },
-        }
+        } as any,
       );
 
       this.logger.debug(`Event ${event.eventType} published to queue with priority ${priority}`);

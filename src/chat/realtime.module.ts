@@ -17,6 +17,7 @@ import { PresenceService } from './services/presence.service';
 import { WebSocketEventService } from './services/websocket-event.service';
 import { MessageQueueService } from './queue/message-queue.service';
 import { EventProcessor } from './processors/event.processor';
+import { PerformanceService } from './monitoring/performance.service';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
 import { WebSocketConfig } from './config/websocket.config';
 
@@ -44,6 +45,9 @@ import { WebSocketConfig } from './config/websocket.config';
     MessageQueueService,
     EventProcessor,
     
+    // Monitoring
+    PerformanceService,
+    
     // Handlers
     MessageHandler,
     CallHandler,
@@ -62,6 +66,7 @@ import { WebSocketConfig } from './config/websocket.config';
     WebSocketEventService,
     MessageQueueService,
     EventProcessor,
+    PerformanceService,
   ],
 })
 export class ChatModule {}
