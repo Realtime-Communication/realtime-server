@@ -37,6 +37,7 @@
   RUN npm install -g prisma
   
   # Set environment variables (can also be passed via docker-compose or --env-file)
+  ENV RABBITMQ_URL="amqp://guest:guest@rabbitmq:5672"
   
   # Expose the application port
   EXPOSE 8080
