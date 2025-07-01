@@ -4,6 +4,10 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsNumber,
+  IsArray,
+  ValidateNested,
+  IsUUID,
 } from 'class-validator';
 import {
   CallStatus,
@@ -13,22 +17,37 @@ import {
 } from '@prisma/client';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
 import { ConversationType, ConversationVm } from 'src/groups/model/conversation.vm';
+import { BaseDto } from './base.dto';
+import { Type } from 'class-transformer';
 
 export enum TargetType {
   ROOM,
   FRIEND,
 }
 
-export class MessageDto {
+export class AttachmentDto {
+  @IsString()
+  @IsOptional()
+  thumbUrl?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileUrl: string;
+}
+
+export class MessageDto extends BaseDto {
   @IsInt()
   @IsNotEmpty()
   conversationId: number;
 
-  guid: string;
+  @IsUUID()
+  @IsOptional()
+  guid?: string;
 
   @IsNotEmpty()
   conversationType: ConversationType;
 
+  @IsEnum(MessageType)
   @IsNotEmpty()
   messageType: MessageType;
 
@@ -36,43 +55,51 @@ export class MessageDto {
   @IsOptional()
   content?: string;
 
+  @IsEnum(CallType)
   @IsOptional()
   callType?: CallType;
 
+  @IsEnum(CallStatus)
   @IsOptional()
   callStatus?: CallStatus;
 
+  @IsEnum(MessageStatus)
   @IsOptional()
   status?: MessageStatus = 'SENT';
 
-  timestamp?: Date;
-
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentDto)
   @IsOptional()
-  attachments?: {
-    thumbUrl: string;
-    fileUrl: string;
-  }[];
+  attachments?: AttachmentDto[];
 
-  user: TAccountRequest;
+  // Runtime properties
+  timestamp?: Date;
+  user?: TAccountRequest;
 }
 
-export class CallDto extends MessageDto {
-  // @IsInt()
-  // @IsNotEmpty()
-  // from: number;
-  conversation?: ConversationVm;
-
-  callerInfomation: TAccountRequest;
+export class CallDto extends BaseDto {
+  @IsEnum(CallType)
+  @IsOptional()
+  callType?: CallType;
 
   @IsString()
-  @IsNotEmpty()
-  signal?: string;
+  @IsOptional()
+  signalData?: string;
+
+  // Runtime properties
+  user?: TAccountRequest;
+  callerInfomation?: TAccountRequest;
 }
 
-export class CallResponseDto extends MessageDto {
-  @IsString()
+export class CallResponseDto extends CallDto {
+  @IsEnum(CallStatus)
   @IsNotEmpty()
-  signal?: string;
+  status: CallStatus;
+}
 
-  conversation?: ConversationVm;
+export class DeleteMessageDto extends BaseDto {
+  @IsNumber()
+  @IsNotEmpty()
+  messageId: number;
 }

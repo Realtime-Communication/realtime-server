@@ -1,307 +1,234 @@
 import {
-  SubscribeMessage,
   WebSocketGateway,
   OnGatewayInit,
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  WsException,
 } from '@nestjs/websockets';
-import { Socket, Server } from 'socket.io';
-import { ChatService } from './message.service';
-import { Inject, UseGuards } from '@nestjs/common';
-import { CacheManager } from './cache.service';
-import {
-  MessageDto,
-  CallDto,
-} from './dto/create-message.dto';
-import { UserService } from 'src/users/users.service';
-import { FriendsService } from 'src/friends/friends.service';
-import { TAccountRequest } from 'src/decorators/account-request.decorator';
-import { WsJwtGuard } from 'src/chat/ws.guard';
+import { Server } from 'socket.io';
+import { UseGuards, UsePipes, ValidationPipe, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConversationType } from 'src/groups/model/conversation.vm';
-
-export interface AuthenticatedSocket extends Socket {
-  account: TAccountRequest;
-}
+import { WsJwtGuard } from './ws.guard';
+import { AuthenticatedSocket } from './interfaces/authenticated-socket.interface';
+import { MessageHandler } from './handlers/message.handler';
+import { CallHandler } from './handlers/call.handler';
+import { ConnectionHandler } from './handlers/connection.handler';
+import { MessageDto, CallDto, DeleteMessageDto } from './dto/create-message.dto';
+import { WebSocketSecurityService } from './websocket-security.service';
 
 @UseGuards(WsJwtGuard)
+@UsePipes(new ValidationPipe({ 
+  transform: true,
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  exceptionFactory: (errors) => {
+    return new WsException(errors);
+  }
+}))
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    credentials: true,
     methods: ['GET', 'POST'],
   },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 10000,
+  pingInterval: 5000,
 })
 export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   private server: Server;
-  private interval: NodeJS.Timeout;
-  private wsClients = new Map<string, string>();
+  private readonly logger = new Logger(ChatGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly chatService: ChatService,
-    private readonly userService: UserService,
-    private readonly cacheManager: CacheManager,
-    private readonly friendSerivce: FriendsService,
+    private readonly messageHandler: MessageHandler,
+    private readonly callHandler: CallHandler,
+    private readonly connectionHandler: ConnectionHandler,
+    private readonly securityService: WebSocketSecurityService,
   ) {}
 
-  // @SubscribeMessage('reload')
-  // async reloadDate(client: AuthenticatedSocket, messageDto: MessageDto) {
-  //   this.server.emit("reloadData", {})
-  // }
-
-  getTargetSocket = (client: AuthenticatedSocket, messageDto: MessageDto) => {
-    if (messageDto.conversationType == ConversationType.FRIEND) {
-      return [
-        `friend:${Math.min(
-          client.account.id,
-          messageDto.conversationId,
-        )}:${Math.max(client.account.id, messageDto.conversationId)}`,
-        client.id,
-      ];
-    } else if (messageDto.conversationType == ConversationType.GROUP) {
-      return [`group:${messageDto.conversationId}`];
-    }
-    return `group:${messageDto.conversationId}`;
-  };
-
-  @SubscribeMessage('sendMessage')
-  async messageInGoing(client: AuthenticatedSocket, messageDto: MessageDto) {
-    messageDto.timestamp = new Date();
-    messageDto.guid = crypto.randomUUID();
-    this.chatService.saveMessage(client.account, messageDto);
-    const tartGetSocket = this.getTargetSocket(client, messageDto);
-    messageDto.user = client.account;
-    this.server.to(tartGetSocket).emit('messageComing', messageDto);
-    this.server.to(tartGetSocket).emit('loadLastMessage', {});
-  }
-
-  @SubscribeMessage('typing')
-  async userIsTyping(client: AuthenticatedSocket, messageDto: MessageDto) {
-    this.server
-      .to(this.getTargetSocket(client, messageDto))
-      .timeout(3000)
-      .emit('typing', messageDto);
-  }
-
-  @SubscribeMessage('deleteMessage')
-  async deleteMessage(client: AuthenticatedSocket, messageDto: MessageDto) {
-    this.server
-      .to(this.getTargetSocket(client, messageDto))
-      .emit('delete_message', {});
-  }
-
-  //----------------------------------------------------------------------------------------------------------
-
-  @SubscribeMessage('callUser')
-  async callUser(client: AuthenticatedSocket, callDto: CallDto) {
+  /**
+   * Gateway initialization
+   */
+  async afterInit(server: Server): Promise<void> {
     try {
-      const members =
-        this.server.sockets.adapter.rooms.get(`group:${callDto.conversationId}`)
-          ?.size || 0;
-      if (members < 2) {
-        client.emit('userNotOnline', {});
-      }
-      callDto.user = client.account;
-      callDto.callerInfomation = client.account;
-      this.server
-        .to(this.getTargetSocket(client, callDto))
-        .except(client.id)
-        .emit('openCall', callDto);
+      // Set server instance for handlers
+      this.messageHandler.setServer(server);
+      this.callHandler.setServer(server);
+      this.connectionHandler.setServer(server);
 
-      this.server
-        .to(this.getTargetSocket(client, callDto))
-        .except(client.id)
-        .emit('callUser', callDto);
-    } catch (error) {
-      this.server.to(client.id).emit('callError', { message: error.message });
-    }
-  }
-
-  @SubscribeMessage('answerCall')
-  async answerCall(client: AuthenticatedSocket, callDto: CallDto) {
-    try {
-      // TODO:
-      // await this.chatService.handleCallResponse(client.account, responseDto);
-      callDto.user = client.account;
-      this.server
-        .to(this.getTargetSocket(client, callDto))
-        .except(client.id)
-        .emit('callAccepted', callDto);
-    } catch (error) {
-      this.server.to(client.id).emit('callError', { message: error.message });
-    }
-  }
-
-  @SubscribeMessage('refuseCall')
-  async refuseCall(client: AuthenticatedSocket, callDto: CallDto) {
-    try {
-      // TODO:
-      // await this.chatService.handleCallEnd(client.account, actionDto);
-      // const userToCall = await this.cacheManager.getUserSocket(
-      //   actionDto.otherId,
-      // );
-      callDto.user = client.account;
-      this.server
-        .to(this.getTargetSocket(client, callDto))
-        .emit('refuseCall', callDto);
-    } catch (error) {
-      this.server
-        .to(client.account.socketId)
-        .emit('callError', { message: error.message });
-    }
-  }
-
-  @SubscribeMessage('giveUpCall')
-  async giveUpCall(client: AuthenticatedSocket, callDto: CallDto) {
-    try {
-      callDto.user = client.account;
-
-      this.server
-        .to(this.getTargetSocket(client, callDto))
-        .emit('giveUpCall', {});
-
-    } catch (error) {
-      this.server
-        .to(client.id)
-        .emit('callError', { message: error.message });
-    }
-  }
-
-  @SubscribeMessage('closeCall')
-  async closeCall(client: AuthenticatedSocket, callDto: CallDto) {
-    try {
-      // await this.chatService.handleCallEnd(client.account, actionDto);
-      // const userToCall = await this.cacheManager.getUserSocket(
-      //   actionDto.otherId,
-      // );
-
-      this.server
-        .to(this.getTargetSocket(client, callDto))
-        .emit('closeCall', {});
-    } catch (error) {
-      this.server
-        .to(client.id)
-        .emit('callError', { message: error.message });
-    }
-  }
-
-  @SubscribeMessage('completeCloseCall')
-  async completeCloseCall(client: AuthenticatedSocket) {
-    this.server.to(client.id).emit('completeCloseCall', {});
-  }
-
-  async afterInit(server: Server) {
-    try {
-      this.server.use((socket: AuthenticatedSocket, next) => {
-        const token = socket.handshake.auth?.token;
-
-        if (!token) {
-          return next(new Error('Authentication token is missing'));
-        }
-
-        try {
-          const payload = this.jwtService.verify(token); // you may need to inject jwtService here
-          payload.socketId = socket.id;
-          // payload.firstName
-          socket.account = payload; // Assign payload to socket
-          next();
-        } catch (err) {
-          return next(new Error('Invalid token'));
-        }
+      // Configure authentication middleware
+      server.use((socket: AuthenticatedSocket, next) => {
+        this.authenticateSocket(socket, next);
       });
 
-      await this.cacheManager.clearCache();
-      await this.initializeServerState();
-      console.log('WebSocket Server initialized successfully');
+      // Configure server options
+      this.configureServer(server);
+
+      this.logger.log('WebSocket Server initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize WebSocket Server:', error);
+      this.logger.error('Failed to initialize WebSocket Server:', error);
       throw error;
     }
   }
 
-  private async initializeServerState() {
-    // Set up event listeners
-    this.server.on('error', (error) => {
-      console.error('WebSocket Server Error:', error);
-    });
-
-    // Set up server configs
-    this.server.engine.opts.pingTimeout = 10000;
-    this.server.engine.opts.pingInterval = 5000;
-
-    // this.interval = setInterval(() => {
-    //   this.server.emit('timerEvent', { message: 'Ping every 5s' });
-    // }, 10000);
+  /**
+   * Handle new connections
+   */
+  async handleConnection(client: AuthenticatedSocket): Promise<void> {
+    await this.connectionHandler.handleConnection(client);
   }
 
-  onModuleDestroy() {
-    clearInterval(this.interval);
+  /**
+   * Handle disconnections
+   */
+  async handleDisconnect(client: AuthenticatedSocket): Promise<void> {
+    await this.connectionHandler.handleDisconnect(client);
   }
 
-  async handleDisconnect(client: any) {
-    // this.wsClients.delete(client.handshake.query.myParam.toString());
-    this.server.emit('listOnline', {
-      listOnline: Array.from(this.wsClients.keys()),
-    });
-    await this.cacheManager.removeUserData(client.userId);
-    console.log(
-      client.id,
-      'just disconnected, client in sever =',
-      await this.cacheManager.getCacheSize(),
-    );
+  // =============== Message Events ===============
+
+  @SubscribeMessage('sendMessage')
+  async handleSendMessage(
+    client: AuthenticatedSocket,
+    messageDto: MessageDto
+  ): Promise<void> {
+    await this.messageHandler.handleMessage(client, messageDto);
   }
 
-  async handleConnection(client: AuthenticatedSocket) {
-    const userId = client.account.id;
-    const sockethandleConnectionId = client.id;
-
-    await this.cacheManager.addUserSocket(userId, sockethandleConnectionId);
-    client.join('-1');
-
-    const friendIds: number[] = await this.friendSerivce.getFriendIds(userId);
-    const groupIds: number[] = await this.friendSerivce.getGroupIds(userId);
-
-    const onlineFriendIds: number[] = [];
-
-    for (const friendId of friendIds) {
-      const isOnline = await this.cacheManager.isUserOnline(friendId);
-      if (isOnline) {
-        onlineFriendIds.push(friendId);
-
-        // Store bidirectional graph edge
-        await this.cacheManager.addFriendEdge(userId, friendId);
-        await this.cacheManager.addFriendEdge(friendId, userId);
-
-        // Join friend room (for 1-1 chat)
-        client.join(
-          `friend:${Math.min(userId, friendId)}:${Math.max(userId, friendId)}`,
-        );
-      }
-    }
-
-    // Join all groups
-    for (const groupId of groupIds) {
-      client.join(`group:${groupId}`);
-    }
-
-    // Notify client of online friends
-    client.emit('onlineFriends', { friends: onlineFriendIds });
-
-    // Optional: send updated list of online users
-    const allOnlineUsers = await this.cacheManager.getOnlineUsers();
-    this.server.emit('listOnline', { listOnline: allOnlineUsers });
-
-    console.log(
-      `User ${userId} connected. Online friends: ${onlineFriendIds.join(', ')}`,
-    );
+  @SubscribeMessage('typing')
+  async handleTyping(
+    client: AuthenticatedSocket,
+    messageDto: MessageDto
+  ): Promise<void> {
+    await this.messageHandler.handleTyping(client, messageDto);
   }
+
+  @SubscribeMessage('deleteMessage')
+  async handleDeleteMessage(
+    client: AuthenticatedSocket,
+    deleteDto: DeleteMessageDto
+  ): Promise<void> {
+    await this.messageHandler.handleDeleteMessage(client, deleteDto);
+  }
+
+  @SubscribeMessage('messageRead')
+  async handleMessageRead(
+    client: AuthenticatedSocket,
+    data: { messageId: number; conversationId: number; conversationType: string }
+  ): Promise<void> {
+    await this.messageHandler.handleMessageRead(client, data);
+  }
+
+  // =============== Call Events ===============
+
+  @SubscribeMessage('callUser')
+  async handleCallUser(
+    client: AuthenticatedSocket,
+    callDto: CallDto
+  ): Promise<void> {
+    await this.callHandler.handleCallUser(client, callDto);
+  }
+
+  @SubscribeMessage('answerCall')
+  async handleAnswerCall(
+    client: AuthenticatedSocket,
+    callDto: CallDto
+  ): Promise<void> {
+    await this.callHandler.handleAnswerCall(client, callDto);
+  }
+
+  @SubscribeMessage('refuseCall')
+  async handleRefuseCall(
+    client: AuthenticatedSocket,
+    callDto: CallDto
+  ): Promise<void> {
+    await this.callHandler.handleRefuseCall(client, callDto);
+  }
+
+  @SubscribeMessage('giveUpCall')
+  async handleGiveUpCall(
+    client: AuthenticatedSocket,
+    callDto: CallDto
+  ): Promise<void> {
+    await this.callHandler.handleGiveUpCall(client, callDto);
+  }
+
+  @SubscribeMessage('closeCall')
+  async handleCloseCall(
+    client: AuthenticatedSocket,
+    callDto: CallDto
+  ): Promise<void> {
+    await this.callHandler.handleCloseCall(client, callDto);
+  }
+
+  @SubscribeMessage('completeCloseCall')
+  async handleCompleteCloseCall(client: AuthenticatedSocket): Promise<void> {
+    await this.callHandler.handleCompleteCloseCall(client);
+  }
+
+  // =============== Group Events ===============
 
   @SubscribeMessage('join_group')
-  async joinGroups(client: Socket, data: any) {
-    client.join(data);
+  async handleJoinGroup(
+    client: AuthenticatedSocket,
+    groupId: number
+  ): Promise<void> {
+    await this.connectionHandler.handleJoinGroup(client, groupId);
+  }
+
+  // =============== Private Methods ===============
+
+  /**
+   * Authenticate socket connection
+   */
+  private authenticateSocket(
+    socket: AuthenticatedSocket,
+    next: (err?: Error) => void
+  ): void {
+    try {
+      const token = socket.handshake.auth?.token ||
+                   socket.handshake.headers?.authorization?.split(' ')[1];
+
+      if (!token) {
+        this.securityService.markSuspiciousActivity(socket.handshake.address);
+        return next(new Error('Authentication token is missing'));
+      }
+
+      const payload = this.jwtService.verify(token);
+      payload.socketId = socket.id;
+      socket.account = payload;
+      
+      next();
+    } catch (err) {
+      this.securityService.markSuspiciousActivity(socket.handshake.address);
+      return next(new Error('Invalid token'));
+    }
+  }
+
+  /**
+   * Configure server settings
+   */
+  private configureServer(server: Server): void {
+    // Error handling
+    server.on('error', (error) => {
+      this.logger.error('WebSocket Server Error:', error);
+    });
+
+    // Connection limits
+    server.setMaxListeners(100);
+
+    // Configure engine options
+    if (server.engine) {
+      server.engine.opts.pingTimeout = 10000;
+      server.engine.opts.pingInterval = 5000;
+      server.engine.opts.upgradeTimeout = 10000;
+      server.engine.opts.maxHttpBufferSize = 1e6; // 1MB
+    }
   }
 }

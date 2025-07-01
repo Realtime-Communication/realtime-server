@@ -5,27 +5,47 @@ import { ChatService } from './message.service';
 import { UsersModule } from 'src/users/users.module';
 import { CacheManager } from './cache.service';
 import { FriendModule } from 'src/friends/friends.module';
-import { ConfigModule, ConfigService } from '@nestjs/config'; // ✅ Import the module, not the service
-import { WsJwtGuard } from 'src/chat/ws.guard';
-import { JwtModule } from '@nestjs/jwt';
-import ms from 'ms';
+import { ConfigModule } from '@nestjs/config';
+import { WsJwtGuard } from './ws.guard';
 import { AuthModule } from 'src/auth/auth.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { MessageHandler } from './handlers/message.handler';
+import { CallHandler } from './handlers/call.handler';
+import { ConnectionHandler } from './handlers/connection.handler';
+import { WebSocketSecurityService } from './websocket-security.service';
+import { PresenceService } from './services/presence.service';
+import { WebSocketEventService } from './services/websocket-event.service';
+import { PrismaModule } from 'src/common/prisma/prisma.module';
+import { WebSocketConfig } from './config/websocket.config';
 
 @Module({
   imports: [
     UsersModule,
-    ConfigModule, // ✅ Correct module import
+    ConfigModule,
     FriendModule,
     AuthModule,
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 1 minute
-        limit: 10, // 10 requests per minute
-      },
-    ]),
+    PrismaModule,
+    ThrottlerModule.forRoot([WebSocketConfig.throttle]),
   ],
-  providers: [ChatGateway, ChatService, CacheManager, WsJwtGuard],
+  providers: [
+    ChatGateway,
+    ChatService,
+    CacheManager,
+    WsJwtGuard,
+    MessageHandler,
+    CallHandler,
+    ConnectionHandler,
+    WebSocketSecurityService,
+    PresenceService,
+    WebSocketEventService,
+  ],
   controllers: [MessageController],
+  exports: [
+    ChatService,
+    CacheManager,
+    WebSocketSecurityService,
+    PresenceService,
+    WebSocketEventService,
+  ],
 })
-export class ChatModule { }
+export class ChatModule {}

@@ -6,28 +6,28 @@ datasource db {
   provider     = "postgresql"
   url          = "postgresql://admin:adminpassword@localhost:5432/main_db"
   relationMode = "foreignKeys"
-} 
+}
 
 model User {
-  id          Int         @id @default(autoincrement())
-  phone       String      @unique
-  email       String      @unique
-  password    String
-  role        AccountRole
-  is_blocked  Boolean     @default(false)
-  is_active   Boolean     @default(true)
+  id         Int         @id @default(autoincrement())
+  phone      String      @unique
+  email      String      @unique
+  password   String
+  role       AccountRole
+  is_blocked Boolean     @default(false)
+  is_active  Boolean     @default(true)
 
   // Personal information
-  first_name  String      @default("")
+  first_name  String  @default("")
   middle_name String?
-  last_name   String      @default("")
+  last_name   String  @default("")
   preferences String?
 
   // Admin information
   level_left  Int? // Only for admin users
   level_right Int? // Only for admin users
-  created_at  DateTime    @default(now())
-  updated_at  DateTime    @updatedAt
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   // Relations
   accesses                 Access[]
