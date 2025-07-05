@@ -1,47 +1,116 @@
-# ----------- Development Build Stage -----------
-  FROM node:22-alpine AS builder
+# ==============================================================================
+# NestJS Realtime Server Dockerfile
+# Multi-stage build for production optimization
+# ==============================================================================
 
-  # Set working directory
-  WORKDIR /app
-  
-  # Install dependencies
-  COPY package*.json ./
-  RUN npm install
-  
-  # Copy all source code and Prisma files
-  COPY . .
-  ENV PRISMA_CLIENT_ENGINE_TYPE="binary"
-  
-  # Generate Prisma client based on schema
-  RUN npx prisma generate
-  
-  # Build TypeScript application
-  RUN npm run build || (echo "Build failed" && ls -la && exit 1)
-  
-  # ----------- Production Runtime Stage -----------
-  FROM node:22-alpine AS production
-  
-  WORKDIR /app
-  
-  # Copy only necessary files from builder
-  COPY --from=builder /app/dist ./dist
-  COPY --from=builder /app/package*.json ./
-  COPY --from=builder /app/node_modules ./
-  COPY --from=builder /app/prisma ./prisma
-  COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-  
-  # Install only production dependencies
-  RUN npm install --omit=dev
-  
-  # Install Prisma CLI for running migrations in production
-  RUN npm install -g prisma
-  
-  # Set environment variables (can also be passed via docker-compose or --env-file)
-  ENV RABBITMQ_URL="amqp://guest:guest@rabbitmq:5672"
-  
-  # Expose the application port
-  EXPOSE 8080
-  
-  # Run migrations and start the app
-  CMD prisma migrate deploy && node dist/src/main
+# ----------- Base Stage -----------
+FROM node:22-alpine AS base
+
+# Install system dependencies and security updates
+RUN apk update && apk upgrade && apk add --no-cache \
+    dumb-init \
+    openssl \
+    ca-certificates \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files for better Docker layer caching
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# ----------- Dependencies Stage -----------
+FROM base AS dependencies
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci --frozen-lockfile && \
+    npm cache clean --force
+
+# ----------- Builder Stage -----------
+FROM base AS builder
+
+# Copy dependencies from previous stage
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# Copy source code
+COPY . .
+
+# Set Prisma engine type for Alpine Linux
+ENV PRISMA_CLIENT_ENGINE_TYPE="binary"
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build the NestJS application
+RUN npm run build
+
+# Install only production dependencies
+RUN npm ci --frozen-lockfile --only=production && \
+    npm cache clean --force
+
+# ----------- Production Runner Stage -----------
+FROM base AS production
+
+# Set environment variables
+ENV NODE_ENV=production \
+    PORT=8080 \
+    PRISMA_CLIENT_ENGINE_TYPE=binary
+
+# Create directories and set ownership
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R nestjs:nodejs /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
+
+# Copy public assets and other necessary files
+COPY --from=builder --chown=nestjs:nodejs /app/public ./public
+
+# Switch to non-root user
+USER nestjs
+
+# Expose the application port
+EXPOSE 8080
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]
+
+# ----------- Development Stage -----------
+FROM base AS development
+
+# Install development dependencies
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# Copy source code
+COPY . .
+
+# Set development environment
+ENV NODE_ENV=development \
+    PORT=8080 \
+    PRISMA_CLIENT_ENGINE_TYPE=binary
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Expose application and debug ports
+EXPOSE 8080 9229
+
+# Start development server with hot reload
+CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
 

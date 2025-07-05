@@ -1,0 +1,215 @@
+# ==============================================================================
+# NestJS Realtime Server - Development Docker Compose Configuration
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # NestJS Backend Service (Development)
+  # ==============================================================================
+  
+  nestjs-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: nestjs-realtime-server-dev
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+      - "${DEBUG_PORT:-9229}:9229"  # Debug port for Node.js debugging
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - JWT_ACCESS_TOKEN=${JWT_ACCESS_TOKEN}
+      - JWT_ACCESS_EXPIRED=${JWT_ACCESS_EXPIRED:-7d}
+      - PRISMA_CLIENT_ENGINE_TYPE=binary
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nestjs-network
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      - /app/node_modules
+      - app-logs:/app/logs
+      - app-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==============================================================================
+  # PostgreSQL Database
+  # ==============================================================================
+  
+  postgres:
+    image: postgres:16-alpine
+    container_name: nestjs-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-nestjs_chat_dev}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - nestjs-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-nestjs_chat_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==============================================================================
+  # Redis Cache
+  # ==============================================================================
+  
+  redis:
+    image: redis:7-alpine
+    container_name: nestjs-redis-dev
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-devpassword} --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data-dev:/data
+    networks:
+      - nestjs-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-devpassword}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==============================================================================
+  # RabbitMQ Message Queue
+  # ==============================================================================
+  
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: nestjs-rabbitmq-dev
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-devpassword}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data-dev:/var/lib/rabbitmq
+    networks:
+      - nestjs-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ==============================================================================
+  # Development Tools
+  # ==============================================================================
+  
+  # Database administration tool
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nestjs-pgadmin-dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@nestjs.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-devpassword}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin-data-dev:/var/lib/pgadmin
+    networks:
+      - nestjs-network
+
+  # Redis administration tool
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: nestjs-redis-commander-dev
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-devpassword}
+      HTTP_USER: ${REDIS_COMMANDER_USER:-admin}
+      HTTP_PASSWORD: ${REDIS_COMMANDER_PASSWORD:-devpassword}
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8087}:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - nestjs-network
+
+  # Email testing tool
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: nestjs-mailhog-dev
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    networks:
+      - nestjs-network
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+
+networks:
+  nestjs-network:
+    driver: bridge
+    name: nestjs-realtime-network-dev
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+
+volumes:
+  postgres-data-dev:
+    driver: local
+    name: nestjs-postgres-data-dev
+  redis-data-dev:
+    driver: local
+    name: nestjs-redis-data-dev
+  rabbitmq-data-dev:
+    driver: local
+    name: nestjs-rabbitmq-data-dev
+  pgadmin-data-dev:
+    driver: local
+    name: nestjs-pgadmin-data-dev
+  app-logs:
+    driver: local
+    name: nestjs-app-logs-dev
+  app-uploads:
+    driver: local
+    name: nestjs-app-uploads-dev 
