@@ -1,8 +1,8 @@
 # ==============================================================================
-# Makefile for NestJS Realtime Server Docker Management
+# Makefile for NestJS Realtime Server Docker Setup
 # ==============================================================================
 
-.PHONY: help setup build up down logs restart clean backup restore
+.PHONY: help setup build up down logs restart clean backup restore test
 
 # Default target
 help: ## Show this help message
@@ -11,7 +11,7 @@ help: ## Show this help message
 	@echo ""
 	@echo "Available commands:"
 	@echo ""
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # Environment setup
 setup: ## Set up environment from template
@@ -39,7 +39,7 @@ logs: ## View logs from all services
 restart: ## Restart all services
 	docker-compose restart
 
-status: ## Show running containers
+ps: ## Show running containers
 	docker-compose ps
 
 # Development commands
@@ -55,54 +55,41 @@ dev-logs: ## View development logs
 dev-restart: ## Restart development environment
 	docker-compose -f docker-compose.dev.yml restart
 
-dev-build: ## Build development images
-	docker-compose -f docker-compose.dev.yml build
-
-# NestJS specific commands
-backend-logs: ## View backend service logs
-	docker-compose logs -f nestjs-backend
-
-backend-shell: ## Open shell in backend container
-	docker-compose exec nestjs-backend sh
-
-backend-restart: ## Restart only backend service
-	docker-compose restart nestjs-backend
+dev-seed: ## Start development environment with database seeding
+	docker-compose -f docker-compose.dev.yml --profile seed up -d
 
 # Database commands
 db-migrate: ## Run database migrations
-	docker-compose exec nestjs-backend npx prisma migrate deploy
+	docker-compose exec app npx prisma migrate deploy
 
 db-reset: ## Reset database
-	docker-compose exec nestjs-backend npx prisma migrate reset --force
+	docker-compose exec app npx prisma migrate reset --force
 
 db-generate: ## Generate Prisma client
-	docker-compose exec nestjs-backend npx prisma generate
+	docker-compose exec app npx prisma generate
 
 db-seed: ## Seed database with test data
-	docker-compose exec nestjs-backend npx prisma db seed
+	docker-compose exec app npx prisma db seed
 
 db-studio: ## Open Prisma Studio
-	docker-compose exec nestjs-backend npx prisma studio
+	docker-compose exec app npx prisma studio
 
-db-shell: ## Open PostgreSQL shell
-	docker-compose exec postgres psql -U admin -d nestjs_chat_db
+# Management tools
+pgadmin: ## Start only PgAdmin
+	docker-compose --profile management up -d pgadmin
 
-# Redis commands
-redis-cli: ## Open Redis CLI
-	docker-compose exec redis redis-cli -a $$(grep REDIS_PASSWORD .env | cut -d '=' -f2 | tr -d '"')
+redis-commander: ## Start only Redis Commander
+	docker-compose --profile management up -d redis-commander
 
-redis-monitor: ## Monitor Redis commands
-	docker-compose exec redis redis-cli -a $$(grep REDIS_PASSWORD .env | cut -d '=' -f2 | tr -d '"') monitor
-
-redis-info: ## Show Redis info
-	docker-compose exec redis redis-cli -a $$(grep REDIS_PASSWORD .env | cut -d '=' -f2 | tr -d '"') info
+tools: ## Start all management tools
+	docker-compose --profile management up -d
 
 # Backup and restore
 backup: ## Backup database and Redis
 	@echo "Creating backup directory..."
 	@mkdir -p backups
 	@echo "Backing up PostgreSQL database..."
-	docker-compose exec postgres pg_dump -U admin nestjs_chat_db > backups/postgres_$(shell date +%Y%m%d_%H%M%S).sql
+	docker-compose exec postgres pg_dump -U admin realtime_chat > backups/postgres_$(shell date +%Y%m%d_%H%M%S).sql
 	@echo "Backing up Redis data..."
 	docker-compose exec redis redis-cli --rdb /data/backup.rdb
 	docker cp $$(docker-compose ps -q redis):/data/backup.rdb backups/redis_$(shell date +%Y%m%d_%H%M%S).rdb
@@ -113,7 +100,7 @@ restore-db: ## Restore database from backup file (usage: make restore-db FILE=ba
 		echo "Please specify backup file: make restore-db FILE=backup.sql"; \
 		exit 1; \
 	fi
-	docker-compose exec -i postgres psql -U admin nestjs_chat_db < $(FILE)
+	docker-compose exec -i postgres psql -U admin realtime_chat < $(FILE)
 
 # Health and monitoring
 health: ## Check health of all services
@@ -126,29 +113,6 @@ health: ## Check health of all services
 stats: ## Show resource usage statistics
 	docker stats --no-stream
 
-# Testing commands
-test: ## Run application tests
-	docker-compose exec nestjs-backend npm test
-
-test-watch: ## Run tests in watch mode
-	docker-compose exec nestjs-backend npm run test:watch
-
-test-e2e: ## Run end-to-end tests
-	docker-compose exec nestjs-backend npm run test:e2e
-
-test-coverage: ## Run tests with coverage
-	docker-compose exec nestjs-backend npm run test:cov
-
-# Linting and formatting
-lint: ## Run ESLint
-	docker-compose exec nestjs-backend npm run lint
-
-lint-fix: ## Run ESLint with auto-fix
-	docker-compose exec nestjs-backend npm run lint:fix
-
-format: ## Format code with Prettier
-	docker-compose exec nestjs-backend npm run format
-
 # Cleanup commands
 clean: ## Remove all containers and volumes
 	docker-compose down -v
@@ -158,15 +122,38 @@ clean-all: ## Remove all containers, volumes, and images
 	docker-compose down -v --rmi all
 	docker system prune -a -f
 
+# Service-specific commands
+app-logs: ## View app service logs
+	docker-compose logs -f app
+
+app-shell: ## Open shell in app container
+	docker-compose exec app sh
+
+db-shell: ## Open PostgreSQL shell
+	docker-compose exec postgres psql -U admin realtime_chat
+
+redis-cli: ## Open Redis CLI
+	docker-compose exec redis redis-cli -a $$(grep REDIS_PASSWORD .env | cut -d '=' -f2)
+
 # Security commands
 security-scan: ## Run security scan on images
 	@echo "Scanning Docker images for vulnerabilities..."
 	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-		aquasec/trivy image nestjs-realtime-server || echo "Trivy not available"
+		aquasec/trivy image realtime-server || echo "Trivy not available"
 
 update-images: ## Update all Docker images
 	docker-compose pull
 	docker-compose build --no-cache
+
+# Testing commands
+test: ## Run application tests
+	docker-compose exec app npm test
+
+test-e2e: ## Run end-to-end tests
+	docker-compose exec app npm run test:e2e
+
+test-coverage: ## Run tests with coverage
+	docker-compose exec app npm run test:cov
 
 # Utility commands
 generate-secrets: ## Generate secure secrets for environment
@@ -177,6 +164,8 @@ generate-secrets: ## Generate secure secrets for environment
 	@echo "JWT_ACCESS_TOKEN=$$(openssl rand -base64 48)"
 	@echo "JWT_REFRESH_TOKEN=$$(openssl rand -base64 48)"
 	@echo "SESSION_SECRET=$$(openssl rand -base64 48)"
+	@echo "PGADMIN_PASSWORD=$$(openssl rand -base64 32)"
+	@echo "REDIS_COMMANDER_PASSWORD=$$(openssl rand -base64 32)"
 
 init: setup generate-secrets ## Initialize project with setup and secrets
 
@@ -185,33 +174,27 @@ deploy: setup build up db-migrate ## Full deployment (setup, build, start, migra
 
 redeploy: down build up db-migrate ## Redeploy with rebuild
 
-dev-deploy: setup dev-build dev-up ## Deploy development environment
-
-# Production specific commands
-prod-up: ## Start production services
-	NODE_ENV=production docker-compose up -d
-
-prod-build: ## Build production images
-	NODE_ENV=production docker-compose build
-
 # Monitoring commands
 monitor: ## Monitor all services (requires ctop)
 	@which ctop > /dev/null || (echo "Please install ctop: https://github.com/bcicen/ctop" && exit 1)
 	ctop
 
-# Development utilities
-dev-install: ## Install new npm package in development
-	docker-compose -f docker-compose.dev.yml exec nestjs-backend npm install $(PACKAGE)
+# SSL/TLS commands
+ssl-cert: ## Generate self-signed SSL certificate
+	@mkdir -p ssl
+	@openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout ssl/key.pem -out ssl/cert.pem \
+		-subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+	@echo "SSL certificate generated in ssl/ directory"
 
-dev-uninstall: ## Uninstall npm package in development
-	docker-compose -f docker-compose.dev.yml exec nestjs-backend npm uninstall $(PACKAGE)
+# Development helpers
+dev-reset: ## Reset development environment
+	docker-compose -f docker-compose.dev.yml down -v
+	docker-compose -f docker-compose.dev.yml up -d
+	docker-compose -f docker-compose.dev.yml exec app npx prisma migrate reset --force
+	docker-compose -f docker-compose.dev.yml exec app npx prisma db seed
 
-# Documentation
-docs: ## Show documentation links
-	@echo "Documentation and URLs:"
-	@echo "- Application: http://localhost:8080"
-	@echo "- API Documentation: http://localhost:8080/api-docs"
-	@echo "- PgAdmin: http://localhost:5050"
-	@echo "- Redis Commander: http://localhost:8087"
-	@echo "- RabbitMQ Management: http://localhost:15672"
-	@echo "- Mailhog (dev): http://localhost:8025" 
+# Performance testing
+load-test: ## Run basic load test (requires ab)
+	@which ab > /dev/null || (echo "Please install Apache Bench (ab)" && exit 1)
+	ab -n 1000 -c 10 http://localhost:8080/health 

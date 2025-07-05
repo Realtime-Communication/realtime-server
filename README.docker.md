@@ -1,25 +1,26 @@
-# NestJS Realtime Server - Docker Configuration
+# Docker Configuration for NestJS Realtime Server
 
-This document provides comprehensive instructions for running the NestJS Realtime Server using Docker.
+This document describes the Docker configuration for the NestJS Realtime Server with production-ready settings, security features, and performance optimizations.
 
 ## 🏗️ Architecture
 
-The Docker setup includes:
+The Docker setup includes the following services:
 
-- **NestJS Backend**: TypeScript-based Node.js application
-- **PostgreSQL**: Primary database with optimized configuration
+- **App**: NestJS application with TypeScript
+- **PostgreSQL**: Primary database with optimized settings
 - **Redis**: Caching and session storage
-- **RabbitMQ**: Message queue for real-time features
-- **PgAdmin**: Database management interface (development)
-- **Redis Commander**: Redis management interface (development)
-- **Mailhog**: Email testing (development)
+- **RabbitMQ**: Message queue for scalable real-time features
+- **Nginx**: Reverse proxy with load balancing and security
+- **PgAdmin**: Database management interface (optional)
+- **Redis Commander**: Redis management interface (optional)
+- **Mailhog**: Email testing (development only)
 
 ## 📋 Prerequisites
 
-- Docker Engine 20.10 or higher
-- Docker Compose 2.0 or higher
-- At least 2GB RAM available
-- 5GB free disk space
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- At least 4GB RAM available
+- 10GB free disk space
 
 ## 🚀 Quick Start
 
@@ -32,131 +33,137 @@ cp env.example .env
 # Edit environment variables
 nano .env
 
-# OR use Makefile
+# Or use the Makefile
 make setup
 ```
 
-### 2. Generate Secure Secrets
+### 2. Production Deployment
 
 ```bash
-# Generate random secrets
-make generate-secrets
-
-# Copy the output to your .env file
-```
-
-### 3. Start Services
-
-**Production:**
-```bash
-# Start all services
-make up
-
-# OR using docker-compose directly
+# Build and start all services
 docker-compose up -d
+
+# Or use the Makefile
+make deploy
+
+# View logs
+make logs
+
+# Check service status
+make ps
 ```
 
-**Development:**
+### 3. Development Environment
+
 ```bash
 # Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# Or use the Makefile
 make dev-up
 
-# OR using docker-compose directly
-docker-compose -f docker-compose.dev.yml up -d
-```
-
-### 4. Initialize Database
-
-```bash
-# Run database migrations
-make db-migrate
-
-# Seed database with test data (optional)
-make db-seed
+# With database seeding
+make dev-seed
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Edit your `.env` file with the following key variables:
+Key environment variables that must be configured:
 
 ```env
 # Database
-POSTGRES_PASSWORD=your_secure_password
-DATABASE_URL=postgres://admin:your_secure_password@postgres:5432/nestjs_chat_db
+POSTGRES_PASSWORD=<secure_password>
+DATABASE_URL=postgresql://admin:<password>@postgres:5432/realtime_chat
 
 # Redis
-REDIS_PASSWORD=your_secure_password
+REDIS_PASSWORD=<secure_password>
 
 # RabbitMQ
-RABBITMQ_PASSWORD=your_secure_password
+RABBITMQ_USER=admin
+RABBITMQ_PASSWORD=<secure_password>
 
 # JWT
-JWT_ACCESS_TOKEN=your_32_character_secret_key
-JWT_REFRESH_TOKEN=your_32_character_secret_key
+JWT_ACCESS_TOKEN=<secure_32_char_secret>
+JWT_REFRESH_TOKEN=<secure_32_char_secret>
 
-# Session
-SESSION_SECRET=your_32_character_secret_key
+# Management Tools
+PGADMIN_EMAIL=admin@example.com
+PGADMIN_PASSWORD=<secure_password>
 ```
 
-### Service Ports
+### Security Considerations
 
-| Service | Production Port | Development Port |
-|---------|----------------|------------------|
-| NestJS Backend | 8080 | 8080 |
-| PostgreSQL | 5432 | 5432 |
-| Redis | 6379 | 6379 |
-| RabbitMQ | 5672 | 5672 |
-| RabbitMQ Management | 15672 | 15672 |
-| PgAdmin | - | 5050 |
-| Redis Commander | - | 8087 |
-| Mailhog | - | 8025 |
+1. **Change Default Passwords**: Never use default passwords in production
+2. **Use Strong Secrets**: JWT tokens should be at least 32 characters
+3. **Enable HTTPS**: Configure SSL certificates for production
+4. **Network Security**: Use Docker networks for service isolation
+5. **Resource Limits**: Set appropriate CPU and memory limits
+
+## 📊 Service Details
+
+### Application Service
+
+- **Port**: 8080
+- **Health Check**: `/health`
+- **Logs**: `make app-logs`
+- **Debug Port**: 9229 (development only)
+
+### PostgreSQL Database
+
+- **Port**: 5432
+- **Database**: `realtime_chat`
+- **User**: `admin`
+- **Extensions**: UUID, pgcrypto, pg_trgm, btree_gin
+- **Management**: PgAdmin on port 5050
+
+### Redis Cache
+
+- **Port**: 6379
+- **Memory Limit**: 256MB
+- **Persistence**: RDB + AOF
+- **Management**: Redis Commander on port 8087
+
+### RabbitMQ Message Queue
+
+- **Port**: 5672
+- **Management**: 15672
+- **Vhost**: `/`
+- **Memory Limit**: 256MB
+
+### Nginx Reverse Proxy
+
+- **HTTP Port**: 80
+- **HTTPS Port**: 443
+- **Features**: Rate limiting, compression, security headers
+- **WebSocket Support**: Yes
 
 ## 🛠️ Management Commands
 
-### Basic Operations
+### Container Management
 
 ```bash
-# View all available commands
-make help
-
 # Start services
 make up
 
 # Stop services
 make down
 
-# View logs
-make logs
-
 # Restart services
 make restart
 
-# Check service status
-make status
-```
+# View logs
+make logs
 
-### Development Commands
-
-```bash
-# Start development environment
-make dev-up
-
-# View development logs
-make dev-logs
-
-# Stop development environment
-make dev-down
-
-# Build development images
-make dev-build
+# Check status
+make ps
 ```
 
 ### Database Management
 
 ```bash
-# Run migrations
+# Run database migrations
 make db-migrate
 
 # Reset database
@@ -170,51 +177,38 @@ make db-seed
 
 # Open Prisma Studio
 make db-studio
+```
 
-# Open PostgreSQL shell
+### Development Commands
+
+```bash
+# Start development environment
+make dev-up
+
+# View development logs
+make dev-logs
+
+# Reset development environment
+make dev-reset
+
+# Open shell in app container
+make app-shell
+```
+
+### Backup and Restore
+
+```bash
+# Backup database and Redis
+make backup
+
+# Restore database from backup
+make restore-db FILE=backup.sql
+
+# Database shell
 make db-shell
-```
 
-### Redis Management
-
-```bash
-# Open Redis CLI
+# Redis CLI
 make redis-cli
-
-# Monitor Redis commands
-make redis-monitor
-
-# Show Redis info
-make redis-info
-```
-
-### Testing
-
-```bash
-# Run tests
-make test
-
-# Run tests in watch mode
-make test-watch
-
-# Run end-to-end tests
-make test-e2e
-
-# Run tests with coverage
-make test-coverage
-```
-
-### Code Quality
-
-```bash
-# Run linting
-make lint
-
-# Fix linting issues
-make lint-fix
-
-# Format code
-make format
 ```
 
 ## 🔍 Monitoring and Debugging
@@ -222,238 +216,214 @@ make format
 ### Health Checks
 
 ```bash
-# Check service health
+# Check all services
 make health
 
 # View resource usage
 make stats
 
-# Monitor containers (requires ctop)
+# Monitor with ctop (if installed)
 make monitor
 ```
 
-### Accessing Services
-
-```bash
-# Open backend shell
-make backend-shell
-
-# View backend logs
-make backend-logs
-
-# Restart only backend
-make backend-restart
-```
-
-### Development URLs
-
-- **Application**: http://localhost:8080
-- **API Documentation**: http://localhost:8080/api-docs
-- **PgAdmin**: http://localhost:5050
-- **Redis Commander**: http://localhost:8087
-- **RabbitMQ Management**: http://localhost:15672
-- **Mailhog**: http://localhost:8025
-
-## 💾 Backup and Restore
-
-### Backup
-
-```bash
-# Backup database and Redis
-make backup
-
-# Manual database backup
-docker-compose exec postgres pg_dump -U admin nestjs_chat_db > backup.sql
-```
-
-### Restore
-
-```bash
-# Restore database from backup
-make restore-db FILE=backup.sql
-
-# Manual restore
-docker-compose exec -i postgres psql -U admin nestjs_chat_db < backup.sql
-```
-
-## 🔧 Troubleshooting
-
 ### Common Issues
 
-1. **Port Already in Use**
-   ```bash
-   # Check what's using the port
-   lsof -i :8080
-   
-   # Kill the process or change port in .env
-   ```
+1. **Port Conflicts**: Ensure ports are not in use by other services
+2. **Memory Issues**: Increase Docker memory limits if needed
+3. **Permission Errors**: Check file permissions for volumes
+4. **Network Issues**: Verify Docker network configuration
 
-2. **Database Connection Failed**
-   ```bash
-   # Check database logs
-   docker-compose logs postgres
-   
-   # Verify database is running
-   docker-compose exec postgres pg_isready
-   ```
-
-3. **Redis Connection Failed**
-   ```bash
-   # Check Redis logs
-   docker-compose logs redis
-   
-   # Test Redis connection
-   docker-compose exec redis redis-cli ping
-   ```
-
-4. **Backend Won't Start**
-   ```bash
-   # Check backend logs
-   make backend-logs
-   
-   # Rebuild backend
-   docker-compose build nestjs-backend
-   ```
-
-### Reset Everything
-
-```bash
-# Stop all services and remove volumes
-make clean
-
-# Remove all containers, volumes, and images
-make clean-all
-```
-
-## 🚀 Deployment
-
-### Production Deployment
-
-```bash
-# Full production deployment
-make deploy
-
-# This runs:
-# - Setup environment
-# - Build images
-# - Start services
-# - Run migrations
-```
-
-### Development Deployment
-
-```bash
-# Development deployment
-make dev-deploy
-
-# This runs:
-# - Setup environment
-# - Build development images
-# - Start development services
-```
-
-## 📝 Development Workflow
-
-1. **Initial Setup**
-   ```bash
-   make init
-   ```
-
-2. **Start Development**
-   ```bash
-   make dev-up
-   ```
-
-3. **Make Changes**
-   - Edit code (hot reload enabled)
-   - Changes automatically reflected
-
-4. **Test Changes**
-   ```bash
-   make test
-   ```
-
-5. **Commit Changes**
-   ```bash
-   make lint
-   make format
-   git add .
-   git commit -m "Your changes"
-   ```
-
-## 🔒 Security Considerations
-
-1. **Change Default Passwords**: Never use default passwords in production
-2. **Use Strong Secrets**: JWT and session secrets should be cryptographically secure
-3. **Environment Variables**: Never commit `.env` files to version control
-4. **Network Security**: Use Docker networks for service isolation
-5. **Regular Updates**: Keep base images and dependencies updated
-
-## 📊 Performance Optimization
+## 📈 Performance Tuning
 
 ### Database Optimization
 
-- Connection pooling configured
-- Optimized PostgreSQL settings
-- Proper indexing via Prisma
+- Connection pooling: 10 max connections
+- Shared buffers: 256MB
+- Effective cache size: 1GB
+- Query optimization enabled
 
-### Redis Optimization
+### Redis Configuration
 
-- Memory limits configured
-- Appropriate eviction policy
-- Persistence settings optimized
+- Memory policy: allkeys-lru
+- Persistence: RDB + AOF
+- Connection pooling enabled
 
-### Application Optimization
+### Nginx Optimization
 
-- Multi-stage Docker builds
-- Minimal production images
-- Health checks configured
+- Worker processes: auto
+- Worker connections: 4096
+- Gzip compression enabled
+- File caching enabled
+
+## 🔐 Security Features
+
+### Network Security
+
+- Isolated Docker networks
+- Service-to-service communication only
+- No unnecessary port exposure
+
+### Application Security
+
+- Non-root user in containers
+- Security headers via Nginx
+- Rate limiting on API endpoints
+- Input validation and sanitization
+
+### Data Security
+
+- Encrypted database connections
+- Secure password storage
+- JWT token validation
+- Session management
+
+## 📝 Development vs Production
+
+### Development Features
+
+- Hot reloading enabled
+- Debug ports exposed
+- Relaxed security settings
+- Development tools included
+- Detailed logging
+
+### Production Features
+
+- Optimized image layers
+- Security hardening
+- Resource limits
+- Health checks
+- Monitoring integration
+
+## 🚨 Troubleshooting
+
+### Common Commands
+
+```bash
+# Check container logs
+make app-logs
+
+# Restart all services
+make restart
+
+# Rebuild and restart
+make redeploy
+
+# Remove all containers and volumes
+make clean
+
+# Clean up unused resources
+make clean-all
+```
+
+### Utility Commands
+
+```bash
+# Generate secure secrets
+make generate-secrets
+
+# Create SSL certificates
+make ssl-cert
+
+# Run security scan
+make security-scan
+
+# Update images
+make update-images
+```
+
+## 📄 File Structure
+
+```
+realtime-server/
+├── Dockerfile                 # Multi-stage production Dockerfile
+├── docker-compose.yml         # Production configuration
+├── docker-compose.dev.yml     # Development configuration
+├── Makefile                   # Docker management commands
+├── env.example                # Environment variables template
+├── docker/                    # Docker configuration files
+│   ├── nginx.conf             # Production Nginx config
+│   ├── nginx.dev.conf         # Development Nginx config
+│   ├── nginx.global.conf      # Global Nginx settings
+│   ├── redis.conf             # Redis configuration
+│   ├── rabbitmq.conf          # RabbitMQ configuration
+│   ├── pgadmin-servers.json   # PgAdmin server config
+│   └── init-scripts/          # Database initialization scripts
+│       └── 01-init-db.sql
+└── README.docker.md           # This file
+```
 
 ## 🔄 Updates and Maintenance
 
-### Update Dependencies
+### Regular Tasks
+
+1. **Update Dependencies**: Keep Docker images updated
+2. **Backup Data**: Regular database and Redis backups
+3. **Monitor Resources**: Check CPU, memory, and disk usage
+4. **Security Updates**: Update base images and packages
+5. **Log Rotation**: Manage log file sizes
+
+### Version Updates
 
 ```bash
-# Update Docker images
+# Update to latest images
 make update-images
 
-# Update Node.js packages (in development)
-make dev-install PACKAGE=package-name
+# Rebuild with latest base images
+docker-compose build --no-cache
+
+# Update with zero downtime
+docker-compose up -d --no-deps --build app
 ```
 
-### Regular Maintenance
+## 🧪 Testing
+
+### Running Tests
 
 ```bash
-# Backup data regularly
-make backup
+# Run unit tests
+make test
 
-# Monitor resource usage
-make stats
+# Run end-to-end tests
+make test-e2e
 
-# Check for security vulnerabilities
-make security-scan
+# Run tests with coverage
+make test-coverage
+
+# Run load tests
+make load-test
 ```
 
-## 📋 Checklist for Production
+### Development Testing
 
-- [ ] Environment variables configured
-- [ ] Strong passwords and secrets generated
-- [ ] Database backup strategy implemented
-- [ ] Monitoring and logging configured
-- [ ] Security headers and CORS configured
-- [ ] SSL/TLS certificates configured
-- [ ] Resource limits set appropriately
-- [ ] Health checks working
-- [ ] Error handling and logging implemented
+```bash
+# Start development environment
+make dev-up
 
-## 🆘 Support
+# Run tests in development
+docker-compose -f docker-compose.dev.yml exec app npm test
 
-If you encounter issues:
+# Debug with logs
+make dev-logs
+```
+
+## 📞 Support
+
+For issues and support:
 
 1. Check the logs: `make logs`
-2. Verify environment variables
-3. Ensure all services are healthy: `make health`
-4. Check resource usage: `make stats`
-5. Consult the troubleshooting section above
+2. Verify environment variables: `cat .env`
+3. Check service health: `make health`
+4. Review resource usage: `make stats`
+5. Consult application logs: `make app-logs`
 
-For more detailed information, refer to the individual service documentation and Docker Compose files. 
+## 🔗 Related Documentation
+
+- [Application README](README.md)
+- [API Documentation](src/swagger.ts)
+- [Database Schema](prisma/schema.prisma)
+- [Environment Configuration](env.example)
+
+---
+
+**Note**: This configuration is optimized for production use with security best practices. Always review and customize settings based on your specific requirements and infrastructure. 
