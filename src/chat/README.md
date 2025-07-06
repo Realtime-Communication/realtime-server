@@ -1,85 +1,78 @@
-# Chat Module - Clean Architecture Refactoring
+# Chat Module
 
-This module has been refactored to follow Clean Architecture principles. The current state represents an in-progress migration, with both legacy components and new clean architecture components coexisting.
+A simplified, maintainable chat module following the patterns used in other modules like `common`, `config`, and `core`.
 
-## Clean Architecture Structure
+## Structure
 
 ```
 src/chat/
-  ├── domain/                 # Domain layer (core business rules)
-  │   ├── entities/           # Business entities
-  │   ├── repositories/       # Repository interfaces
-  │   └── services/           # Domain services
-  │
-  ├── application/            # Application layer (use cases)
-  │   ├── commands/           # Command handlers
-  │   ├── queries/            # Query handlers
-  │   └── dtos/               # DTOs for application layer
-  │
-  ├── infrastructure/         # Infrastructure layer
-  │   ├── persistence/        # Database adapters
-  │   ├── cache/              # Cache implementation
-  │   ├── messaging/          # Message queue implementation
-  │   ├── websocket/          # WebSocket implementation
-  │   └── security/           # Security services
-  │
-  └── interfaces/             # Interface layer
-      ├── http/               # HTTP controllers
-      ├── websocket/          # WebSocket gateway
-      └── dtos/               # DTOs for interfaces
+├── chat.module.ts          # Main module
+├── chat.controller.ts      # HTTP endpoints
+├── chat.gateway.ts         # WebSocket gateway
+├── chat.service.ts         # Core business logic
+├── dto/                    # Data transfer objects
+│   ├── message.dto.ts      # Message-related DTOs
+│   ├── call.dto.ts         # Call-related DTOs
+│   └── index.ts            # DTO exports
+├── entities/               # Type definitions
+│   ├── message.entity.ts   # Message and presence entities
+│   └── index.ts            # Entity exports
+├── guards/                 # Authentication guards
+│   └── ws-jwt.guard.ts     # WebSocket JWT guard
+├── utils/                  # Utilities
+│   ├── room.util.ts        # Room management utilities
+│   └── security.util.ts    # Security utilities
+└── index.ts                # Module exports
 ```
 
-## Migration Plan
+## Features
 
-The module is being migrated to follow Clean Architecture principles:
-
-1. **Domain Layer**: Core business rules and entities
-   - Independent of external concerns
-   - Defines repository interfaces
-
-2. **Application Layer**: Use cases
-   - Contains business logic
-   - Depends only on the domain layer
-   - Commands & Queries pattern (CQRS-lite)
-
-3. **Infrastructure Layer**: Technical details
-   - Implements repositories
-   - Handles external systems (database, cache, etc.)
-   - Depends on domain layer
-
-4. **Interface Layer**: User interfaces
-   - HTTP controllers, WebSocket gateways
-   - Input/output adapters
-   - Depends on application layer
-
-## Current Status
-
-- ✅ Basic structure created
-- ✅ Core domain entities defined
-- ✅ Repository interfaces defined
-- ✅ Application services created
-- ✅ HTTP Controller migrated
-- ⬜ WebSocket Gateway migration in progress
-- ⬜ Legacy code still in use alongside new architecture
-
-## Benefits of Clean Architecture
-
-- **Maintainability**: Clear separation of concerns
-- **Testability**: Core business logic can be tested without external dependencies
-- **Flexibility**: External systems can be replaced without affecting core logic
-- **Independence**: Domain and application layers are independent of frameworks
+- **Real-time messaging**: Send/receive messages via WebSocket
+- **Voice/Video calls**: Initiate and manage calls
+- **Presence management**: Track online/offline users
+- **Security**: Rate limiting, content filtering, spam detection
+- **Room management**: Friend and group conversations
+- **Message operations**: Create, update, delete messages
 
 ## Usage
 
-To use the new clean architecture components:
+### Import the module
 
 ```typescript
-// Import clean architecture components
-import {
-  ChatModule,
-  MessageCommandService,
-  MessageQueryService
-} from 'src/chat';
+import { ChatModule } from 'src/chat';
+
+@Module({
+  imports: [ChatModule],
+})
+export class AppModule {}
 ```
 
-The `index.ts` file exports both legacy and clean architecture components, with appropriate prefixes to avoid naming conflicts during the migration period. 
+### Use the service
+
+```typescript
+import { ChatService } from 'src/chat';
+
+@Injectable()
+export class SomeService {
+  constructor(private readonly chatService: ChatService) {}
+
+  async sendMessage(user: TAccountRequest, messageDto: CreateMessageDto) {
+    return this.chatService.saveMessage(user, messageDto);
+  }
+}
+```
+
+## Key Benefits
+
+1. **Simplified**: Single service handles all chat operations
+2. **Maintainable**: Clear structure following established patterns
+3. **Focused**: Essential features without over-engineering
+4. **Consistent**: Follows same patterns as other modules
+5. **Testable**: Simple dependencies and clear interfaces
+
+## Dependencies
+
+- `PrismaModule`: Database operations
+- `AuthModule`: Authentication
+- `ConfigModule`: Configuration management
+- Redis: Caching and real-time features 

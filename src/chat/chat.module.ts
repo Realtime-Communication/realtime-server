@@ -1,61 +1,34 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
 
-// Domain services
+// Core modules
 import { PrismaModule } from '../common/prisma/prisma.module';
-import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 
-// Application layer
-import { MessageCommandService } from './application/commands/message.commands';
-import { MessageQueryService } from './application/queries/message.queries';
-
-// Infrastructure layer
-import { PrismaMessageRepository } from './infrastructure/persistence/prisma-message.repository';
-import { RedisCacheRepository } from './infrastructure/cache/redis-cache.repository';
-
-// Interface layer
-import { MessageController } from './interfaces/http/message.controller';
-
-// Configuration
+// Chat module components
+import { ChatController } from './chat.controller';
+import { ChatGateway } from './chat.gateway';
+import { ChatService } from './chat.service';
+import { WsJwtGuard } from './guards/ws-jwt.guard';
 
 @Module({
   imports: [
-    UsersModule,
     ConfigModule,
-    AuthModule,
     PrismaModule,
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 10,
-    }]),
+    AuthModule,
   ],
   controllers: [
-    MessageController,
+    ChatController,
   ],
   providers: [
-    // Application layer
-    MessageCommandService,
-    MessageQueryService,
-    
-    // Infrastructure layer
-    {
-      provide: 'MessageRepository',
-      useClass: PrismaMessageRepository,
-    },
-    {
-      provide: 'CacheRepository',
-      useClass: RedisCacheRepository,
-    },
-    
-    // External services
+    ChatService,
+    ChatGateway,
+    WsJwtGuard,
     JwtService,
   ],
   exports: [
-    MessageCommandService,
-    MessageQueryService,
+    ChatService,
   ],
 })
 export class ChatModule {} 
