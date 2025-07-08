@@ -20,7 +20,7 @@ import {
   SwaggerDocumentOptions,
 } from '@nestjs/swagger';
 import { UsersModule } from './users/users.module';
-import { ChatModule } from './chat/realtime.module';
+import { ChatModule } from './chat/chat.module';
 import { AllExceptionsFilter } from './exception/global.exception';
 
 async function bootstrap() {
@@ -91,7 +91,12 @@ async function bootstrap() {
   // Start the application
   const port = configService.get<number>('PORT') || 8000;
   await app.listen(port);
+  
+  // Log system configuration
   console.log(`Application is running on: http://localhost:${port}/api`);
+  console.log(`RabbitMQ URL: ${configService.get('RABBITMQ_URL', 'Not configured')}`);
+  console.log(`Redis Host: ${configService.get('REDIS_HOST', 'localhost')}:${configService.get('REDIS_PORT', 6379)}`);
+  console.log('🚀 RabbitMQ-powered chat system initialized');
 }
 
 bootstrap().catch(err => {

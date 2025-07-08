@@ -7,8 +7,7 @@ import { ChangePasswordDto } from './users/dto/change-password.dto';
 import { AddFriendDto } from './friends/dto/create-friend.dto';
 import { UpdateFriendDto } from './friends/dto/update-friend.dto';
 import { AuthResponseDto } from './auth/dto/auth-response.dto';
-import { MessageDto } from './chat/dto/create-message.dto';
-import { UpdateMessageDto } from './chat/dto/update-message.dto';
+import { CreateMessageDto, UpdateMessageDto } from './chat/dto/message.dto';
 
 export function setupSwagger(app: INestApplication) {
   // Enable CORS for Swagger UI
@@ -50,7 +49,7 @@ export function setupSwagger(app: INestApplication) {
       ChangePasswordDto,
       
       // Chat DTOs
-      MessageDto,
+      CreateMessageDto,
       UpdateMessageDto,
       
       // Friend DTOs
