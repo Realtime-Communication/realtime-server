@@ -11,7 +11,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 // Feature modules
 import { AuthModule } from './auth/auth.module.new';
-import { ChatModule } from './chat/realtime.module';
+import { ChatModule } from './chat/chat.module';
 import { FriendModule } from './friends/friends.module';
 import { ConversationModule } from './groups/conversations.module';
 import { StoryModule } from './story/story.module';
