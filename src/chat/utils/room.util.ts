@@ -2,7 +2,7 @@ import { ConversationType } from 'src/groups/model/conversation.vm';
 
 export class RoomUtil {
   /**
-   * Generate consistent room name for friend conversations
+   * Get room name for friend conversations
    */
   static getFriendRoomName(userId1: number, userId2: number): string {
     const minId = Math.min(userId1, userId2);
@@ -11,7 +11,7 @@ export class RoomUtil {
   }
 
   /**
-   * Generate room name for group conversations
+   * Get room name for group conversations
    */
   static getGroupRoomName(groupId: number): string {
     return `group:${groupId}`;
@@ -32,79 +32,28 @@ export class RoomUtil {
   }
 
   /**
-   * Get all room names a user should join for a conversation
+   * Get target rooms for broadcasting
    */
   static getTargetRooms(
     conversationType: ConversationType,
     conversationId: number,
-    currentUserId: number,
-    includeUserSocket = false
+    currentUserId: number
   ): string[] {
-    const rooms: string[] = [];
-
-    if (conversationType === ConversationType.FRIEND) {
-      rooms.push(this.getFriendRoomName(currentUserId, conversationId));
-    } else {
-      rooms.push(this.getGroupRoomName(conversationId));
-    }
-
-    if (includeUserSocket) {
-      rooms.push(`user:${currentUserId}`);
-    }
-
-    return rooms;
+    const roomName = this.getRoomName(conversationType, conversationId, currentUserId);
+    return [roomName];
   }
 
   /**
-   * Parse room name to extract information
+   * Get user's personal room for notifications
    */
-  static parseRoomName(roomName: string): {
-    type: 'friend' | 'group' | 'user';
-    id: number;
-    friendId?: number;
-  } | null {
-    // Friend room: friend:1:2
-    const friendMatch = roomName.match(/^friend:(\d+):(\d+)$/);
-    if (friendMatch) {
-      return {
-        type: 'friend',
-        id: parseInt(friendMatch[1]),
-        friendId: parseInt(friendMatch[2]),
-      };
-    }
-
-    // Group room: group:123
-    const groupMatch = roomName.match(/^group:(\d+)$/);
-    if (groupMatch) {
-      return {
-        type: 'group',
-        id: parseInt(groupMatch[1]),
-      };
-    }
-
-    // User room: user:123
-    const userMatch = roomName.match(/^user:(\d+)$/);
-    if (userMatch) {
-      return {
-        type: 'user',
-        id: parseInt(userMatch[1]),
-      };
-    }
-
-    return null;
+  static getUserRoomName(userId: number): string {
+    return `user:${userId}`;
   }
 
   /**
-   * Get presence room name for user status
+   * Get online users room
    */
-  static getPresenceRoomName(userId: number): string {
-    return `presence:${userId}`;
-  }
-
-  /**
-   * Get notification room name for user
-   */
-  static getNotificationRoomName(userId: number): string {
-    return `notifications:${userId}`;
+  static getOnlineUsersRoom(): string {
+    return 'online-users';
   }
 } 
