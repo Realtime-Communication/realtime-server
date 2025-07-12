@@ -14,7 +14,7 @@ import {
 } from '@prisma/client';
 import { QueryMessageDto } from './model/query-message.dto';
 import { PagedResponse } from 'src/common/pagination/paged.vm';
-import { MessageVm } from 'src/chat/dto/message.vm';
+import { MessageResponseDto } from 'src/chat/dto/message.dto';
 import { Pageable } from 'src/common/pagination/pageable.dto';
 import { ConversationVm, ConversationType } from './model/conversation.vm';
 import { ConversationActionDto } from './model/action-conversation.dto';
@@ -174,7 +174,7 @@ export class ConversationService {
   async getConversationMessages(
     account: TAccountRequest,
     query: QueryMessageDto,
-  ): Promise<PagedResponse<MessageVm>> {
+  ): Promise<PagedResponse<MessageResponseDto>> {
     let { conversationId, page = 1, size, order } = query;
     if (!conversationId || isNaN(conversationId)) {
       // Get the most recent conversation
@@ -255,7 +255,7 @@ export class ConversationService {
       throw new NotFoundException('No messages found for this conversation');
     }
 
-    const mappedMessages: MessageVm[] = messages.map((message) => ({
+    const mappedMessages: MessageResponseDto[] = messages.map((message) => ({
       id: message.id,
       guid: message.guid,
       conversationId: message.conversation_id,
@@ -332,13 +332,13 @@ export class ConversationService {
           callType: conversation.messages[0].call_type,
           callStatus: conversation.messages[0].call_status,
           status: conversation.messages[0].message_status,
-          user: conversation.messages[0].user
-            ? {
-              id: conversation.messages[0].user.id,
-              firstName: conversation.messages[0].user.first_name,
-              lastName: conversation.messages[0].user.last_name,
-              email: conversation.messages[0].user.email,
-            }
+                    sender: conversation.messages[0].sender
+              ? {
+                id: conversation.messages[0].sender.id,
+                firstName: conversation.messages[0].sender.first_name,
+                lastName: conversation.messages[0].sender.last_name,
+                email: conversation.messages[0].sender.email,
+              }
             : undefined,
         }
         : null,

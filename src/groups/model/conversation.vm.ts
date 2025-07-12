@@ -1,5 +1,5 @@
 import { User } from "@prisma/client";
-import { MessageVm } from "src/chat/dto/message.vm";
+import { MessageResponseDto } from "src/chat/dto/message.dto";
 import { UserVm } from "src/users/users.vm";
 
 export enum ConversationType {
@@ -24,7 +24,7 @@ export class ConversationVm {
   updatedAt: Date;
   deletedAt?: Date;
   conversationType: ConversationType
-  lastMessage: MessageVm
+  lastMessage: MessageResponseDto
   avatarUrl?: string;
 
   participants: {
