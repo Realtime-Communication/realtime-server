@@ -1,4 +1,23 @@
 # ChatChit Realtime Server
+#
+## Table of Contents
+
+- [Overview](#overview)
+- [Core Architecture](#core-architecture)
+  - [WebSocket Gateway System](#-websocket-gateway-system)
+  - [High-Performance Message Queue](#-high-performance-message-queue)
+  - [Redis Caching Layer](#-redis-caching-layer)
+- [Key Features](#key-features)
+  - [Real-time Communication](#-real-time-communication)
+  - [Social Features](#-social-features)
+  - [Security & Authentication](#-security--authentication)
+  - [Performance & Monitoring](#-performance--monitoring)
+- [Technology Stack](#technology-stack)
+- [Architectural Benefits](#architectural-benefits)
+- [Performance Metrics](#performance-metrics)
+- [Deployment & Infrastructure](#deployment--infrastructure)
+- [Development Features](#development-features)
+- [Migration & Refactoring History](#migration--refactoring-history)
 
 ## Overview
 
