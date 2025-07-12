@@ -1,5 +1,22 @@
 # ChatChit – Realtime Communication Server
 
+A Table of Contents
+
+- [Feature Highlights](#-feature-highlights)
+- [Recent Refactoring (v2.0)](#-recent-refactoring-v20)
+- [RabbitMQ Queue Integration (v2.1)](#-rabbitmq-queue-integration-v21)
+- [High-Level Architecture](#-high-level-architecture)
+- [Project Layout](#-project-layout-root)
+- [Enhanced Chat Module Structure](#enhanced-chat-module-structure)
+- [Tech Stack](#-tech-stack-excerpt-from-packagejson)
+- [Docker Compose Stack](#-docker-compose-stack-abridged)
+- [Quick Start](#-quick-start-local-no-docker)
+- [NPM Scripts](#-npm-scripts-from-packagejson)
+- [Configuration](#-configuration)
+- [API Documentation](#-api-documentation)
+- [Testing](#-testing)
+- [Contributing](#-contributing)
+- [License](#-license)
 A **NestJS**-powered backend that delivers high-performance real-time messaging, voice/video calls, presence, stories and administration for the ChatChit application.
 
 ---
