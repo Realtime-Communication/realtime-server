@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRedis } from '@nestjs-modules/ioredis';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
 import { PaginatedResponse } from 'src/common/interfaces/paginated-response.interface';
@@ -27,28 +28,13 @@ import { RoomUtil } from './utils/room.util';
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
-  private readonly redis: Redis;
   private userPresences = new Map<number, UserPresence>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @InjectRedis() private readonly redis: Redis,
   ) {
-    // Initialize Redis for caching and real-time features
-    this.redis = new Redis({
-      host: this.configService.get('REDIS_HOST', 'localhost'),
-      port: this.configService.get('REDIS_PORT', 6379),
-      password: this.configService.get('REDIS_PASSWORD', 'mypassword'),
-      keyPrefix: 'chat:',
-      retryStrategy: (times: number) => Math.min(times * 50, 2000),
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
-
-    this.redis.on('error', (err) => {
-      this.logger.error('Redis Error:', err);
-    });
-
     // Clean up rate limit data every 5 minutes
     setInterval(() => {
       SecurityUtil.cleanupRateLimitData();

@@ -9,34 +9,32 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { UseGuards, UsePipes, ValidationPipe, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { WsJwtGuard, AuthenticatedSocket } from './guards/ws-jwt.guard';
 import { CreateMessageDto, CallDto, TypingDto, DeleteMessageDto } from './dto';
 import { ConversationType } from 'src/groups/model/conversation.vm';
-import { 
-  ConnectionHandler, 
-  MessageHandler, 
-  CallHandler, 
-  RealtimeEventHandler 
+import {
+  ConnectionHandler,
+  MessageHandler,
+  CallHandler,
+  RealtimeEventHandler,
 } from './handlers';
-import { MessageQueueService, MessageProcessorService, CacheManagerService } from './services';
+import {
+  MessageQueueService,
+  MessageProcessorService,
+  CacheManagerService,
+} from './services';
+import { ChatService } from './chat.service';
+import { AuthGuard } from '@nestjs/passport';
+import { AuthService } from 'src/auth/auth.service';
 
-@UseGuards(WsJwtGuard)
-@UsePipes(new ValidationPipe({ 
-  transform: true,
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  exceptionFactory: (errors) => new WsException(errors)
-}))
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || '*',
-    credentials: true,
+    origin: '*',
     methods: ['GET', 'POST'],
   },
-  transports: ['websocket', 'polling'],
-  pingTimeout: 10000,
-  pingInterval: 5000,
 })
+@UseGuards(WsJwtGuard)
 export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
@@ -50,38 +48,46 @@ export class ChatGateway
   private realtimeEventHandler: RealtimeEventHandler;
 
   constructor(
-    private readonly chatService: any,
+    private readonly authService: AuthService,
+    private readonly chatService: ChatService,
     private readonly messageQueueService: MessageQueueService,
     private readonly messageProcessorService: MessageProcessorService,
-    private readonly cacheManagerService: CacheManagerService
+    private readonly cacheManagerService: CacheManagerService,
   ) {}
 
   async afterInit(server: Server): Promise<void> {
     this.logger.log('WebSocket Server initialized');
-    
+    this.server.use(async (socket: AuthenticatedSocket, next) => {
+      const token = socket. handshake.auth?.token;
+      if (!token) return next(new Error('Authentication token is missing'));
+      try {
+        const payload = await this.authService.verifyAccessToken(token);
+        payload.socketId = socket.id;
+        socket.account = payload;
+        next();
+      } catch (err) {
+        return next(new Error('Invalid token'));
+      }
+    });
+
     // Initialize handlers with the server instance
     this.connectionHandler = new ConnectionHandler(this.chatService, server);
     this.messageHandler = new MessageHandler(this.chatService, server);
     this.callHandler = new CallHandler(this.chatService, server);
     this.realtimeEventHandler = new RealtimeEventHandler(server);
-    
+
     // Set server reference in message processor
     this.messageProcessorService.setServer(server);
-    
     this.logger.log('RabbitMQ-powered chat gateway initialized');
   }
 
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     await this.connectionHandler.handleConnection(client);
-    
-    // Cache user online status
     await this.cacheManagerService.setUserOnline(client.account.id, client.id);
   }
 
   async handleDisconnect(client: AuthenticatedSocket): Promise<void> {
     await this.connectionHandler.handleDisconnection(client);
-    
-    // Remove user from cache
     if (client.account) {
       await this.cacheManagerService.setUserOffline(client.account.id);
     }
@@ -92,18 +98,18 @@ export class ChatGateway
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     client: AuthenticatedSocket,
-    messageDto: CreateMessageDto
+    messageDto: CreateMessageDto,
   ): Promise<void> {
     try {
       // Generate message ID for immediate feedback
       const tempId = messageDto.guid || this.generateTempId();
-      
-      // Queue message for processing
+
+      // Try to queue message for processing
       const queued = await this.messageQueueService.publishHighPriorityMessage(
         'sendMessage',
         { ...messageDto, account: client.account },
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (queued) {
@@ -111,14 +117,25 @@ export class ChatGateway
         client.emit('messageQueued', {
           tempId,
           status: 'queued',
-          timestamp: new Date()
+          timestamp: new Date(),
         });
-        
-        this.logger.debug(`Message queued for user ${client.account.id}: ${tempId}`);
+
+        this.logger.debug(
+          `Message queued for user ${client.account.id}: ${tempId}`,
+        );
       } else {
-        // Fallback to direct processing if queue is unavailable
-        this.logger.warn('Message queue unavailable, falling back to direct processing');
-        await this.messageHandler.handleSendMessage(client, messageDto);
+        // Fallback to direct processing via message processor service
+        this.logger.warn(
+          'Message queue unavailable, falling back to direct processing',
+        );
+
+        await this.messageProcessorService.processMessageDirect(
+          'sendMessage',
+          { ...messageDto, account: client.account },
+          client.account.id,
+          client.id,
+          'high',
+        );
       }
     } catch (error) {
       this.logger.error('Error handling send message:', error);
@@ -129,34 +146,48 @@ export class ChatGateway
   @SubscribeMessage('deleteMessage')
   async handleDeleteMessage(
     client: AuthenticatedSocket,
-    deleteDto: DeleteMessageDto
+    deleteDto: DeleteMessageDto,
   ): Promise<void> {
     try {
       // Queue deletion for processing
-      const queued = await this.messageQueueService.publishMediumPriorityMessage(
-        'deleteMessage',
-        { ...deleteDto, account: client.account },
-        client.account.id,
-        client.id
-      );
+      const queued =
+        await this.messageQueueService.publishMediumPriorityMessage(
+          'deleteMessage',
+          { ...deleteDto, account: client.account },
+          client.account.id,
+          client.id,
+        );
 
       if (queued) {
         // Immediate acknowledgment
         client.emit('deleteMessageQueued', {
           messageId: deleteDto.messageId,
           status: 'queued',
-          timestamp: new Date()
+          timestamp: new Date(),
         });
-        
-        this.logger.debug(`Message deletion queued for user ${client.account.id}: ${deleteDto.messageId}`);
+
+        this.logger.debug(
+          `Message deletion queued for user ${client.account.id}: ${deleteDto.messageId}`,
+        );
       } else {
-        // Fallback to direct processing
-        this.logger.warn('Message queue unavailable, falling back to direct processing');
-        await this.messageHandler.handleDeleteMessage(client, deleteDto);
+        // Fallback to direct processing via message processor service
+        this.logger.warn(
+          'Message queue unavailable, falling back to direct processing',
+        );
+
+        await this.messageProcessorService.processMessageDirect(
+          'deleteMessage',
+          { ...deleteDto, account: client.account },
+          client.account.id,
+          client.id,
+          'medium',
+        );
       }
     } catch (error) {
       this.logger.error('Error handling delete message:', error);
-      client.emit('deleteMessageError', { message: 'Failed to delete message' });
+      client.emit('deleteMessageError', {
+        message: 'Failed to delete message',
+      });
     }
   }
 
@@ -165,7 +196,7 @@ export class ChatGateway
   @SubscribeMessage('callUser')
   async handleCallUser(
     client: AuthenticatedSocket,
-    callDto: CallDto
+    callDto: CallDto,
   ): Promise<void> {
     try {
       // Queue call initiation (high priority)
@@ -173,14 +204,20 @@ export class ChatGateway
         'callUser',
         { ...callDto, account: client.account },
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (queued) {
         this.logger.debug(`Call queued for user ${client.account.id}`);
       } else {
-        // Fallback to direct processing
-        await this.callHandler.handleCallUser(client, callDto);
+        // Fallback to direct processing via message processor service
+        await this.messageProcessorService.processMessageDirect(
+          'callUser',
+          { ...callDto, account: client.account },
+          client.account.id,
+          client.id,
+          'high',
+        );
       }
     } catch (error) {
       this.logger.error('Error handling call user:', error);
@@ -191,7 +228,7 @@ export class ChatGateway
   @SubscribeMessage('answerCall')
   async handleAnswerCall(
     client: AuthenticatedSocket,
-    callDto: CallDto
+    callDto: CallDto,
   ): Promise<void> {
     try {
       // Call answers are time-critical, queue with high priority
@@ -199,14 +236,20 @@ export class ChatGateway
         'answerCall',
         { ...callDto, account: client.account },
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (queued) {
         this.logger.debug(`Call answer queued for user ${client.account.id}`);
       } else {
-        // Fallback to direct processing for critical call responses
-        await this.callHandler.handleAnswerCall(client, callDto);
+        // Fallback to direct processing via message processor service
+        await this.messageProcessorService.processMessageDirect(
+          'answerCall',
+          { ...callDto, account: client.account },
+          client.account.id,
+          client.id,
+          'high',
+        );
       }
     } catch (error) {
       this.logger.error('Error handling answer call:', error);
@@ -217,7 +260,7 @@ export class ChatGateway
   @SubscribeMessage('refuseCall')
   async handleRefuseCall(
     client: AuthenticatedSocket,
-    callDto: CallDto
+    callDto: CallDto,
   ): Promise<void> {
     try {
       // Queue call refusal (high priority)
@@ -225,14 +268,20 @@ export class ChatGateway
         'refuseCall',
         { ...callDto, account: client.account },
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (queued) {
         this.logger.debug(`Call refusal queued for user ${client.account.id}`);
       } else {
-        // Fallback to direct processing
-        await this.callHandler.handleRefuseCall(client, callDto);
+        // Fallback to direct processing via message processor service
+        await this.messageProcessorService.processMessageDirect(
+          'refuseCall',
+          { ...callDto, account: client.account },
+          client.account.id,
+          client.id,
+          'high',
+        );
       }
     } catch (error) {
       this.logger.error('Error handling refuse call:', error);
@@ -243,7 +292,7 @@ export class ChatGateway
   @SubscribeMessage('closeCall')
   async handleCloseCall(
     client: AuthenticatedSocket,
-    callDto: CallDto
+    callDto: CallDto,
   ): Promise<void> {
     try {
       // Queue call closure (high priority)
@@ -251,14 +300,20 @@ export class ChatGateway
         'closeCall',
         { ...callDto, account: client.account },
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (queued) {
         this.logger.debug(`Call closure queued for user ${client.account.id}`);
       } else {
-        // Fallback to direct processing
-        await this.callHandler.handleCloseCall(client, callDto);
+        // Fallback to direct processing via message processor service
+        await this.messageProcessorService.processMessageDirect(
+          'closeCall',
+          { ...callDto, account: client.account },
+          client.account.id,
+          client.id,
+          'high',
+        );
       }
     } catch (error) {
       this.logger.error('Error handling close call:', error);
@@ -271,7 +326,7 @@ export class ChatGateway
   @SubscribeMessage('typing')
   async handleTyping(
     client: AuthenticatedSocket,
-    typingDto: TypingDto
+    typingDto: TypingDto,
   ): Promise<void> {
     try {
       // Queue typing indicator (low priority)
@@ -279,7 +334,7 @@ export class ChatGateway
         'typing',
         { ...typingDto, account: client.account },
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (!queued) {
@@ -295,16 +350,21 @@ export class ChatGateway
   @SubscribeMessage('messageRead')
   async handleMessageRead(
     client: AuthenticatedSocket,
-    data: { messageId: number; conversationId: number; conversationType: ConversationType }
+    data: {
+      messageId: number;
+      conversationId: number;
+      conversationType: ConversationType;
+    },
   ): Promise<void> {
     try {
       // Queue message read (medium priority)
-      const queued = await this.messageQueueService.publishMediumPriorityMessage(
-        'messageRead',
-        { ...data, account: client.account },
-        client.account.id,
-        client.id
-      );
+      const queued =
+        await this.messageQueueService.publishMediumPriorityMessage(
+          'messageRead',
+          { ...data, account: client.account },
+          client.account.id,
+          client.id,
+        );
 
       if (!queued) {
         // Fallback to direct processing
@@ -319,16 +379,17 @@ export class ChatGateway
   @SubscribeMessage('joinGroup')
   async handleJoinGroup(
     client: AuthenticatedSocket,
-    data: { groupId: number }
+    data: { groupId: number },
   ): Promise<void> {
     try {
       // Queue group join (medium priority)
-      const queued = await this.messageQueueService.publishMediumPriorityMessage(
-        'joinGroup',
-        { ...data, account: client.account },
-        client.account.id,
-        client.id
-      );
+      const queued =
+        await this.messageQueueService.publishMediumPriorityMessage(
+          'joinGroup',
+          { ...data, account: client.account },
+          client.account.id,
+          client.id,
+        );
 
       if (!queued) {
         // Fallback to direct processing
@@ -363,12 +424,15 @@ export class ChatGateway
         'ping',
         {},
         client.account.id,
-        client.id
+        client.id,
       );
 
       if (!queued) {
         // Direct response for ping
-        client.emit('pong', { timestamp: new Date(), userId: client.account.id });
+        client.emit('pong', {
+          timestamp: new Date(),
+          userId: client.account.id,
+        });
       }
     } catch (error) {
       this.logger.error('Error handling ping:', error);
@@ -382,4 +446,4 @@ export class ChatGateway
   private generateTempId(): string {
     return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-} 
+}

@@ -12,14 +12,6 @@ import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
 
-// Event handlers
-import { 
-  ConnectionHandler, 
-  MessageHandler, 
-  CallHandler, 
-  RealtimeEventHandler 
-} from './handlers';
-
 // Queue and cache services
 import { 
   MessageQueueService, 
@@ -43,13 +35,6 @@ import {
     ChatGateway,
     WsJwtGuard,
     JwtService,
-    
-    // Event handlers
-    ConnectionHandler,
-    MessageHandler,
-    CallHandler,
-    RealtimeEventHandler,
-    
     // Queue and cache services
     MessageQueueService,
     MessageProcessorService,
