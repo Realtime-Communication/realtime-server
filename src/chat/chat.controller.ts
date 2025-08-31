@@ -108,23 +108,23 @@ export class ChatController {
 
   // =============== Performance Monitoring Endpoints ===============
 
-  @Get('performance/metrics')
-  @UseGuards(JwtAuthGuard)
-  async getPerformanceMetrics() {
-    return {
-      current: this.performanceService.getCurrentMetrics(),
-      recent: this.performanceService.getRecentMetrics(20),
-      recommendations: this.performanceService.getPerformanceRecommendations(),
-    };
-  }
+  // @Get('performance/metrics')
+  // @UseGuards(JwtAuthGuard)
+  // async getPerformanceMetrics() {
+  //   return {
+  //     current: this.performanceService.getCurrentMetrics(),
+  //     recent: this.performanceService.getRecentMetrics(20),
+  //     recommendations: this.performanceService.getPerformanceRecommendations(),
+  //   };
+  // }
 
-  @Get('performance/alerts')
-  @UseGuards(JwtAuthGuard)
-  async getPerformanceAlerts() {
-    return {
-      recent: this.performanceService.getRecentAlerts(20),
-    };
-  }
+  // @Get('performance/alerts')
+  // @UseGuards(JwtAuthGuard)
+  // async getPerformanceAlerts() {
+  //   return {
+  //     recent: this.performanceService.getRecentAlerts(20),
+  //   };
+  // }
 
   @Get('performance/health')
   async getSystemHealth() {
@@ -143,22 +143,22 @@ export class ChatController {
     return this.cacheManagerService.healthCheck();
   }
 
-  @Get('performance/dashboard')
-  @UseGuards(JwtAuthGuard)
-  async getPerformanceDashboard() {
-    const [performance, queueStats, cacheStats] = await Promise.all([
-      this.performanceService.getHealthStatus(),
-      this.messageQueueService.healthCheck(),
-      this.cacheManagerService.healthCheck(),
-    ]);
+  // @Get('performance/dashboard')
+  // @UseGuards(JwtAuthGuard)
+  // async getPerformanceDashboard() {
+  //   const [performance, queueStats, cacheStats] = await Promise.all([
+  //     this.performanceService.getHealthStatus(),
+  //     this.messageQueueService.healthCheck(),
+  //     this.cacheManagerService.healthCheck(),
+  //   ]);
 
-    return {
-      timestamp: new Date(),
-      performance,
-      queueStats,
-      cacheStats,
-      recommendations: this.performanceService.getPerformanceRecommendations(),
-      recentAlerts: this.performanceService.getRecentAlerts(10),
-    };
-  }
+  //   return {
+  //     timestamp: new Date(),
+  //     performance,
+  //     queueStats,
+  //     cacheStats,
+  //     recommendations: this.performanceService.getPerformanceRecommendations(),
+  //     recentAlerts: this.performanceService.getRecentAlerts(10),
+  //   };
+  // }
 } 

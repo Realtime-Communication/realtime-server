@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Socket } from 'socket.io';
 import { TAccountRequest } from 'src/decorators/account-request.decorator';
@@ -24,7 +29,7 @@ export class WsJwtGuard implements CanActivate {
       }
 
       const payload = this.jwtService.verify(token);
-      
+
       if (!this.isValidPayload(payload)) {
         this.logger.warn('Invalid token payload');
         return false;
@@ -52,8 +57,8 @@ export class WsJwtGuard implements CanActivate {
 
     // Try query parameter
     if (client.handshake.query?.token) {
-      return Array.isArray(client.handshake.query.token) 
-        ? client.handshake.query.token[0] 
+      return Array.isArray(client.handshake.query.token)
+        ? client.handshake.query.token[0]
         : client.handshake.query.token;
     }
 
@@ -61,10 +66,12 @@ export class WsJwtGuard implements CanActivate {
   }
 
   private isValidPayload(payload: any): boolean {
-    return payload && 
-           typeof payload.id === 'number' && 
-           typeof payload.email === 'string' &&
-           payload.id > 0;
+    return (
+      payload &&
+      typeof payload.id === 'number' &&
+      typeof payload.email === 'string' &&
+      payload.id > 0
+    );
   }
 
   private attachUserToSocket(client: AuthenticatedSocket, payload: any): void {
@@ -76,4 +83,4 @@ export class WsJwtGuard implements CanActivate {
       socketId: client.id,
     };
   }
-} 
+}

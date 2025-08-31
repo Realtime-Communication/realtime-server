@@ -19,7 +19,7 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "moduleResolution": "node",
+    // "moduleResolution": "node",
     "types": ["node", "@prisma/client"]
   },
   "exclude": ["node_modules", "dist"]

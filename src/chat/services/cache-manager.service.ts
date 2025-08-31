@@ -56,15 +56,15 @@ export class CacheManagerService implements OnModuleInit {
   async cacheUserFriends(userId: number, friendIds: number[]): Promise<void> {
     const key = `user:${userId}:friends`;
     const pipeline = this.redis.pipeline();
-    
+
     // Store as sorted set with scores as timestamps
     pipeline.del(key);
     if (friendIds.length > 0) {
-      const friendsWithScores = friendIds.flatMap(id => [Date.now(), id]);
+      const friendsWithScores = friendIds.flatMap((id) => [Date.now(), id]);
       pipeline.zadd(key, ...friendsWithScores);
     }
     pipeline.expire(key, this.TTL);
-    
+
     await pipeline.exec();
     this.logger.debug(`Cached ${friendIds.length} friends for user ${userId}`);
   }
@@ -75,7 +75,7 @@ export class CacheManagerService implements OnModuleInit {
   async getUserFriends(userId: number): Promise<number[]> {
     const key = `user:${userId}:friends`;
     const friendIds = await this.redis.zrange(key, 0, -1);
-    return friendIds.map(id => parseInt(id));
+    return friendIds.map((id) => parseInt(id));
   }
 
   /**
@@ -84,14 +84,14 @@ export class CacheManagerService implements OnModuleInit {
   async cacheUserGroups(userId: number, groupIds: number[]): Promise<void> {
     const key = `user:${userId}:groups`;
     const pipeline = this.redis.pipeline();
-    
+
     pipeline.del(key);
     if (groupIds.length > 0) {
-      const groupsWithScores = groupIds.flatMap(id => [Date.now(), id]);
+      const groupsWithScores = groupIds.flatMap((id) => [Date.now(), id]);
       pipeline.zadd(key, ...groupsWithScores);
     }
     pipeline.expire(key, this.TTL);
-    
+
     await pipeline.exec();
     this.logger.debug(`Cached ${groupIds.length} groups for user ${userId}`);
   }
@@ -102,20 +102,23 @@ export class CacheManagerService implements OnModuleInit {
   async getUserGroups(userId: number): Promise<number[]> {
     const key = `user:${userId}:groups`;
     const groupIds = await this.redis.zrange(key, 0, -1);
-    return groupIds.map(id => parseInt(id));
+    return groupIds.map((id) => parseInt(id));
   }
 
   /**
    * Cache complete user relationship data
    */
-  async cacheUserRelationships(userId: number, relationships: UserRelationship): Promise<void> {
+  async cacheUserRelationships(
+    userId: number,
+    relationships: UserRelationship,
+  ): Promise<void> {
     const key = `relationships:${userId}`;
     await this.redis.setex(key, this.TTL, JSON.stringify(relationships));
-    
+
     // Also cache individual friend and group mappings
     await this.cacheUserFriends(userId, relationships.friendIds);
     await this.cacheUserGroups(userId, relationships.groupIds);
-    
+
     this.logger.debug(`Cached complete relationships for user ${userId}`);
   }
 
@@ -133,27 +136,31 @@ export class CacheManagerService implements OnModuleInit {
   /**
    * Cache room-to-user mappings
    */
-  async cacheRoomUsers(roomId: string, userIds: number[], roomType: 'friend' | 'group'): Promise<void> {
+  async cacheRoomUsers(
+    roomId: string,
+    userIds: number[],
+    roomType: 'friend' | 'group',
+  ): Promise<void> {
     const key = `room:${roomId}:users`;
     const pipeline = this.redis.pipeline();
-    
+
     // Store as sorted set
     pipeline.del(key);
     if (userIds.length > 0) {
-      const usersWithScores = userIds.flatMap(id => [Date.now(), id]);
+      const usersWithScores = userIds.flatMap((id) => [Date.now(), id]);
       pipeline.zadd(key, ...usersWithScores);
     }
-    
+
     // Store room metadata
     pipeline.hset(`room:${roomId}:meta`, {
       type: roomType,
       userCount: userIds.length,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     });
-    
+
     pipeline.expire(key, this.TTL);
     pipeline.expire(`room:${roomId}:meta`, this.TTL);
-    
+
     await pipeline.exec();
     this.logger.debug(`Cached ${userIds.length} users for room ${roomId}`);
   }
@@ -164,7 +171,7 @@ export class CacheManagerService implements OnModuleInit {
   async getRoomUsers(roomId: string): Promise<number[]> {
     const key = `room:${roomId}:users`;
     const userIds = await this.redis.zrange(key, 0, -1);
-    return userIds.map(id => parseInt(id));
+    return userIds.map((id) => parseInt(id));
   }
 
   /**
@@ -174,10 +181,10 @@ export class CacheManagerService implements OnModuleInit {
     const key = `room:${roomId}:users`;
     await this.redis.zadd(key, Date.now(), userId);
     await this.redis.expire(key, this.TTL);
-    
+
     // Update user count
     await this.redis.hincrby(`room:${roomId}:meta`, 'userCount', 1);
-    
+
     this.logger.debug(`Added user ${userId} to room ${roomId}`);
   }
 
@@ -187,10 +194,10 @@ export class CacheManagerService implements OnModuleInit {
   async removeUserFromRoom(roomId: string, userId: number): Promise<void> {
     const key = `room:${roomId}:users`;
     await this.redis.zrem(key, userId);
-    
+
     // Update user count
     await this.redis.hincrby(`room:${roomId}:meta`, 'userCount', -1);
-    
+
     this.logger.debug(`Removed user ${userId} from room ${roomId}`);
   }
 
@@ -199,22 +206,26 @@ export class CacheManagerService implements OnModuleInit {
   /**
    * Cache online users with presence data
    */
-  async setUserOnline(userId: number, socketId: string, metadata?: any): Promise<void> {
+  async setUserOnline(
+    userId: number,
+    socketId: string,
+    metadata?: any,
+  ): Promise<void> {
     const pipeline = this.redis.pipeline();
-    
+
     // Add to online users sorted set (score is timestamp)
     pipeline.zadd('online:users', Date.now(), userId);
-    
+
     // Store user's socket mapping
     pipeline.hset(`user:${userId}:socket`, {
       socketId,
       connectedAt: Date.now(),
-      ...metadata
+      ...metadata,
     });
-    
+
     // Set expiration
     pipeline.expire(`user:${userId}:socket`, this.TTL);
-    
+
     await pipeline.exec();
     this.logger.debug(`Set user ${userId} online with socket ${socketId}`);
   }
@@ -224,13 +235,13 @@ export class CacheManagerService implements OnModuleInit {
    */
   async setUserOffline(userId: number): Promise<void> {
     const pipeline = this.redis.pipeline();
-    
+
     // Remove from online users
     pipeline.zrem('online:users', userId);
-    
+
     // Remove socket mapping
     pipeline.del(`user:${userId}:socket`);
-    
+
     await pipeline.exec();
     this.logger.debug(`Set user ${userId} offline`);
   }
@@ -240,14 +251,17 @@ export class CacheManagerService implements OnModuleInit {
    */
   async getOnlineUsers(): Promise<number[]> {
     const userIds = await this.redis.zrange('online:users', 0, -1);
-    return userIds.map(id => parseInt(id));
+    return userIds.map((id) => parseInt(id));
   }
 
   /**
    * Get user's socket ID
    */
   async getUserSocket(userId: number): Promise<string | null> {
-    const socketData = await this.redis.hget(`user:${userId}:socket`, 'socketId');
+    const socketData = await this.redis.hget(
+      `user:${userId}:socket`,
+      'socketId',
+    );
     return socketData || null;
   }
 
@@ -264,7 +278,11 @@ export class CacheManagerService implements OnModuleInit {
   /**
    * Get optimized broadcasting targets for a conversation
    */
-  async getBroadcastTargets(conversationId: number, conversationType: 'friend' | 'group', currentUserId: number): Promise<{
+  async getBroadcastTargets(
+    conversationId: number,
+    conversationType: 'friend' | 'group',
+    currentUserId: number,
+  ): Promise<{
     onlineUsers: number[];
     socketIds: string[];
     roomNames: string[];
@@ -275,8 +293,13 @@ export class CacheManagerService implements OnModuleInit {
     if (conversationType === 'friend') {
       // For friend conversations, get the friend relationship
       const friendIds = await this.getUserFriends(currentUserId);
-      userIds = friendIds.filter(id => id !== currentUserId);
-      roomNames = [`friend:${Math.min(currentUserId, conversationId)}:${Math.max(currentUserId, conversationId)}`];
+      userIds = friendIds.filter((id) => id !== currentUserId);
+      roomNames = [
+        `friend:${Math.min(currentUserId, conversationId)}:${Math.max(
+          currentUserId,
+          conversationId,
+        )}`,
+      ];
     } else {
       // For group conversations, get group members
       const groupRoomName = `group:${conversationId}`;
@@ -289,18 +312,18 @@ export class CacheManagerService implements OnModuleInit {
     const socketIds: string[] = [];
 
     const pipeline = this.redis.pipeline();
-    userIds.forEach(userId => {
+    userIds.forEach((userId) => {
       pipeline.zscore('online:users', userId);
       pipeline.hget(`user:${userId}:socket`, 'socketId');
     });
 
     const results = await pipeline.exec();
-    
+
     for (let i = 0; i < userIds.length; i++) {
       const userId = userIds[i];
       const isOnline = results[i * 2]?.[1] !== null;
       const socketId = results[i * 2 + 1]?.[1];
-      
+
       if (isOnline && socketId) {
         onlineUsers.push(userId);
         socketIds.push(socketId as string);
@@ -310,7 +333,7 @@ export class CacheManagerService implements OnModuleInit {
     return {
       onlineUsers,
       socketIds,
-      roomNames
+      roomNames,
     };
   }
 
@@ -326,34 +349,39 @@ export class CacheManagerService implements OnModuleInit {
     hitRate: number;
   }> {
     const pipeline = this.redis.pipeline();
-    
+
     // Get online users count
     pipeline.zcard('online:users');
-    
+
     // Get total rooms (approximate)
-    pipeline.eval(`
+    pipeline.eval(
+      `
       local rooms = redis.call('KEYS', 'chat:cache:room:*:users')
       return #rooms
-    `, 0);
-    
+    `,
+      0,
+    );
+
     // Get memory usage
     pipeline.info('memory');
-    
+
     const results = await pipeline.exec();
-    
+
     const onlineUsers = results[0]?.[1] || 0;
     const totalRooms = results[1]?.[1] || 0;
     const memoryInfo = results[2]?.[1] || '';
-    
+
     // Parse memory usage
-    const memoryMatch = (memoryInfo as string).match(/used_memory_human:(.*?)\r\n/);
+    const memoryMatch = (memoryInfo as string).match(
+      /used_memory_human:(.*?)\r\n/,
+    );
     const memoryUsage = memoryMatch ? memoryMatch[1] : 'unknown';
-    
+
     return {
       onlineUsers: Number(onlineUsers),
       totalRooms: Number(totalRooms),
       memoryUsage,
-      hitRate: 0.95 // This would need to be calculated based on actual cache hits/misses
+      hitRate: 0.95, // This would need to be calculated based on actual cache hits/misses
     };
   }
 
@@ -373,7 +401,7 @@ export class CacheManagerService implements OnModuleInit {
       end
       return deleted
     `;
-    
+
     const deletedCount = await this.redis.eval(script, 0);
     this.logger.debug(`Cleaned up ${deletedCount} expired cache entries`);
     return deletedCount as number;
@@ -384,26 +412,30 @@ export class CacheManagerService implements OnModuleInit {
   /**
    * Redis health check
    */
-  async healthCheck(): Promise<{ connected: boolean; latency: number; stats: any }> {
+  async healthCheck(): Promise<{
+    connected: boolean;
+    latency: number;
+    stats: any;
+  }> {
     try {
       const start = Date.now();
       await this.redis.ping();
       const latency = Date.now() - start;
-      
+
       const stats = await this.getCacheStats();
-      
+
       return {
         connected: true,
         latency,
-        stats
+        stats,
       };
     } catch (error) {
       this.logger.error('Redis health check failed:', error);
       return {
         connected: false,
         latency: -1,
-        stats: null
+        stats: null,
       };
     }
   }
-} 
+}
