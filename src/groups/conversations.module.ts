@@ -6,9 +6,7 @@ import { PrismaService } from 'src/common/prisma/prisma.service';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-  ],
+  imports: [PrismaModule],
   controllers: [GroupsController],
   providers: [ConversationService],
   exports: [ConversationService],

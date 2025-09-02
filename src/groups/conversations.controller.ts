@@ -51,7 +51,7 @@ export class GroupsController {
       ...queryMessageDto,
       conversationId: id,
     });
-  } 
+  }
 
   @Post('/kick')
   async kickParticipant(
@@ -87,7 +87,7 @@ export class GroupsController {
     });
   }
 
-  @Post("/join")
+  @Post('/join')
   async joinConversation(
     @AccountRequest() account: TAccountRequest,
     @Body() actionDto: ConversationActionDto,
@@ -97,7 +97,7 @@ export class GroupsController {
     });
   }
 
-  @Post("/delete")
+  @Post('/delete')
   async deleteConversation(
     @AccountRequest() account: TAccountRequest,
     @Body() actionDto: ConversationActionDto,
@@ -107,7 +107,7 @@ export class GroupsController {
     });
   }
 
-  @Post("/approve")
+  @Post('/approve')
   async approveJoinConversation(
     @AccountRequest() account: TAccountRequest,
     @Body() actionDto: ConversationActionDto,
