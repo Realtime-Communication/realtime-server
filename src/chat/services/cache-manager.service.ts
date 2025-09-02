@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 
 interface UserRelationship {
@@ -18,21 +19,10 @@ interface RoomMapping {
 
 @Injectable()
 export class CacheManagerService implements OnModuleInit {
+  private readonly TTL = 3600;
   private readonly logger = new Logger(CacheManagerService.name);
-  private readonly redis: Redis;
-  private readonly TTL = 3600; // 1 hour default TTL
 
-  constructor(private readonly configService: ConfigService) {
-    this.redis = new Redis({
-      host: this.configService.get('REDIS_HOST', 'localhost'),
-      port: this.configService.get('REDIS_PORT', 6379),
-      password: this.configService.get('REDIS_PASSWORD', 'mypassword'),
-      keyPrefix: 'chat:cache:',
-      retryStrategy: (times: number) => Math.min(times * 50, 2000),
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
-  }
+  constructor(@InjectRedis() private readonly redis: Redis) {}
 
   async onModuleInit() {
     await this.connectRedis();
@@ -48,11 +38,26 @@ export class CacheManagerService implements OnModuleInit {
     }
   }
 
+  // VERSION 2 ---------------------------------------------------------------------
+  async getUserRooms(userId: number): Promise<string[]> {
+    const key = `user:${userId}:rooms`;
+    return this.redis.smembers(key);
+  }
+
+  async resetUserRoomsTTL(userId: number): Promise<number> {
+    const key = `user:${userId}:rooms`;
+    return this.redis.expire(key, this.TTL);
+  }
+
+  async setUserRooms(userId: number, roomIds: string[]): Promise<void> {
+    const key = `user:${userId}:rooms`;
+    await this.redis.sadd(key, ...roomIds);
+    await this.redis.expire(key, this.TTL);
+  }
+
   // =============== User Relationship Graph Management ===============
 
-  /**
-   * Cache user's friend relationships
-   */
+  // Cache user's friend relationships
   async cacheUserFriends(userId: number, friendIds: number[]): Promise<void> {
     const key = `user:${userId}:friends`;
     const pipeline = this.redis.pipeline();
