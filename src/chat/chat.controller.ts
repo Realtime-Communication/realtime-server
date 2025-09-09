@@ -1,22 +1,29 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
-  UseGuards, 
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
   ParseIntPipe,
   HttpStatus,
-  HttpCode
+  HttpCode,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AccountRequest, TAccountRequest } from '../decorators/account-request.decorator';
+import {
+  AccountRequest,
+  TAccountRequest,
+} from '../decorators/account-request.decorator';
 import { ChatService } from './chat.service';
 import { CreateMessageDto, UpdateMessageDto } from './dto';
-import { PerformanceService, MessageQueueService, CacheManagerService } from './services';
+import {
+  PerformanceService,
+  MessageQueueService,
+  CacheManagerService,
+} from './services';
 
 @Controller('chat')
 export class ChatController {
@@ -24,7 +31,7 @@ export class ChatController {
     private readonly chatService: ChatService,
     private readonly performanceService: PerformanceService,
     private readonly messageQueueService: MessageQueueService,
-    private readonly cacheManagerService: CacheManagerService
+    private readonly cacheManagerService: CacheManagerService,
   ) {}
 
   @Post('messages')
@@ -32,7 +39,7 @@ export class ChatController {
   @HttpCode(HttpStatus.CREATED)
   async createMessage(
     @AccountRequest() user: TAccountRequest,
-    @Body() messageDto: CreateMessageDto
+    @Body() messageDto: CreateMessageDto,
   ) {
     return this.chatService.saveMessage(user, messageDto);
   }
@@ -43,13 +50,13 @@ export class ChatController {
     @AccountRequest() user: TAccountRequest,
     @Param('conversationId', ParseIntPipe) conversationId: number,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 20
+    @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
   ) {
     return this.chatService.getMessagesByConversation(
       user.id,
       conversationId,
       page,
-      limit
+      limit,
     );
   }
 
@@ -57,7 +64,7 @@ export class ChatController {
   @UseGuards(JwtAuthGuard)
   async getMessage(
     @AccountRequest() user: TAccountRequest,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ) {
     return this.chatService.getMessage(user.id, id);
   }
@@ -67,7 +74,7 @@ export class ChatController {
   async updateMessage(
     @AccountRequest() user: TAccountRequest,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateMessageDto: UpdateMessageDto
+    @Body() updateMessageDto: UpdateMessageDto,
   ) {
     return this.chatService.updateMessage(user.id, id, updateMessageDto);
   }
@@ -77,7 +84,7 @@ export class ChatController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMessage(
     @AccountRequest() user: TAccountRequest,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ) {
     return this.chatService.deleteMessage(user, id);
   }
@@ -86,7 +93,7 @@ export class ChatController {
   @UseGuards(JwtAuthGuard)
   async getUserRooms(
     @AccountRequest() user: TAccountRequest,
-    @Param('userId', ParseIntPipe) userId: number
+    @Param('userId', ParseIntPipe) userId: number,
   ) {
     // Only allow users to get their own rooms
     if (user.id !== userId) {
@@ -161,4 +168,4 @@ export class ChatController {
   //     recentAlerts: this.performanceService.getRecentAlerts(10),
   //   };
   // }
-} 
+}

@@ -10,7 +10,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
-import { WsJwtGuard } from './guards/ws-jwt.guard';
+import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
 
 // Queue and cache services
 import { 
@@ -19,6 +19,9 @@ import {
   CacheManagerService,
   PerformanceService
 } from './services';
+import { connectionHandlerProvider } from './provider/connection-handler.provider';
+import { callHandlerProvider } from './provider/call-handler.provider';
+import { messageHandlerProvider } from './provider/message-handler.provider';
 
 @Module({
   imports: [
@@ -40,6 +43,9 @@ import {
     MessageProcessorService,
     CacheManagerService,
     PerformanceService,
+    connectionHandlerProvider,
+    callHandlerProvider,
+    messageHandlerProvider, 
   ],
   exports: [
     ChatService,

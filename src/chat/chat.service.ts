@@ -389,11 +389,11 @@ export class ChatService {
           },
         });
         if (otherParticipant) {
-          rooms.push(RoomUtil.getFriendRoomName(userId, otherParticipant.user_id));
+          rooms.push(RoomUtil.generateFriendRoomId(userId, otherParticipant.user_id));
         }
       } else {
         // Group conversation
-        rooms.push(RoomUtil.getGroupRoomName(conversationId));
+        rooms.push(RoomUtil.generateGroupRoomId(conversationId));
       }
     }
 

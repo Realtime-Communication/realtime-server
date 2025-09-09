@@ -8,9 +8,15 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { UseGuards, UsePipes, ValidationPipe, Logger } from '@nestjs/common';
+import {
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { WsJwtGuard, AuthenticatedSocket } from './guards/ws-jwt.guard';
+import { WsJwtGuard, AuthenticatedSocket } from '../auth/guards/ws-jwt.guard';
 import { CreateMessageDto, CallDto, TypingDto, DeleteMessageDto } from './dto';
 import { ConversationType } from 'src/groups/model/conversation.vm';
 import {
@@ -25,8 +31,10 @@ import {
   CacheManagerService,
 } from './services';
 import { ChatService } from './chat.service';
-import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from 'src/auth/auth.service';
+import { CONNECTION_HANDLER_FACTORY } from './provider/connection-handler.provider';
+import { CALL_HANDLER_FACTORY } from './provider/call-handler.provider';
+import { MESSAGE_HANDLER_FACTORY } from './provider/message-handler.provider';
 
 @WebSocketGateway({
   cors: {
@@ -53,12 +61,20 @@ export class ChatGateway
     private readonly messageQueueService: MessageQueueService,
     private readonly messageProcessorService: MessageProcessorService,
     private readonly cacheManagerService: CacheManagerService,
+    @Inject(CONNECTION_HANDLER_FACTORY)
+    private readonly createConnectionHandler: (
+      server: Server,
+    ) => ConnectionHandler,
+    @Inject(CALL_HANDLER_FACTORY)
+    private readonly createCallHandler: (server: Server) => CallHandler,
+    @Inject(MESSAGE_HANDLER_FACTORY)
+    private readonly createMessageHandler: (server: Server) => MessageHandler,
   ) {}
 
   async afterInit(server: Server): Promise<void> {
-    this.logger.log('WebSocket Server initialized');
+    this.logger.log('>>> WebSocket Server initialized');
     this.server.use(async (socket: AuthenticatedSocket, next) => {
-      const token = socket. handshake.auth?.token;
+      const token = socket.handshake.auth?.token;
       if (!token) return next(new Error('Authentication token is missing'));
       try {
         const payload = await this.authService.verifyAccessToken(token);
@@ -71,9 +87,9 @@ export class ChatGateway
     });
 
     // Initialize handlers with the server instance
-    this.connectionHandler = new ConnectionHandler(this.chatService, server);
-    this.messageHandler = new MessageHandler(this.chatService, server);
-    this.callHandler = new CallHandler(this.chatService, server);
+    this.connectionHandler = this.createConnectionHandler(server);
+    this.messageHandler = this.createMessageHandler(server);
+    this.callHandler = this.createCallHandler(server);
     this.realtimeEventHandler = new RealtimeEventHandler(server);
 
     // Set server reference in message processor
