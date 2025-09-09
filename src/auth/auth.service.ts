@@ -12,6 +12,7 @@ import { AuthDto } from './dto/auth.dto';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { AccountRole, User } from '@prisma/client';
 import { LoginRequest } from './dto/login.dto';
+import { TAccountRequest } from 'src/decorators/account-request.decorator';
 
 @Injectable()
 export class AuthService {
@@ -51,7 +52,7 @@ export class AuthService {
         role: createUserDto.role,
       },
     });
-
+    
     return user;
   }
 
@@ -87,28 +88,8 @@ export class AuthService {
     const user = await this.validateUser(
       loginRequest.email,
       loginRequest.password,
-    );
+    ); 
 
-    // Create device entry if deviceId is provided
-    // let device;
-    // if (authDto.deviceId) {
-    //   device = await this.prismaService.device.upsert({
-    //     where: {
-    //       device_id: authDto.deviceId,
-    //     },
-    //     update: {
-    //       device_token: authDto.deviceToken,
-    //     },
-    //     create: {
-    //       user_id: user.id,
-    //       device_id: authDto.deviceId,
-    //       device_token: authDto.deviceToken,
-    //       type: authDto.deviceType || 'APPLE',
-    //     },
-    //   });
-    // }
-
-    // Generate JWT token
     const accessToken = this.jwtService.sign({
       firstName: user.first_name,
       lastName: user.last_name,
@@ -149,5 +130,24 @@ export class AuthService {
     // In a stateless JWT system, the client should discard the token
     // If you need to invalidate tokens, you would need to implement a token blacklist
     return { message: 'Logout successful' };
+  }
+
+  /**
+   * Verify access token and return the payload as TAccountRequest
+   */
+  async verifyAccessToken(token: string): Promise<TAccountRequest> {
+    try {
+      const payload = this.jwtService.verify(token);
+      
+      return {
+        id: payload.id,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        type: payload.type,
+        socketId: undefined, // socketId is not stored in JWT, will be set elsewhere
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
   }
 }
