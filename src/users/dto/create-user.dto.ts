@@ -18,76 +18,62 @@ import { IsOptional } from 'class-validator';
 
 import { Matches } from 'class-validator';
 
-import { ApiPropertyOptional } from '@nestjs/swagger';    
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
   @ApiProperty({
-    description: 'User\'s phone number',
+    description: "User's phone number",
     example: '+1234567890',
     required: true,
   })
   @IsNotEmpty()
   @IsString()
-  @IsPhoneNumber()
   phone: string;
 
   @ApiProperty({
-    description: 'User\'s email address',
+    description: "User's email address",
     example: 'user@example.com',
     required: true,
   })
   @IsNotEmpty()
-  @IsEmail()
   email: string;
 
   @ApiProperty({
-    description: 'User\'s password (min 8 characters, at least 1 letter and 1 number)',
+    description:
+      "User's password (min 8 characters, at least 1 letter and 1 number)",
     minLength: 8,
     example: 'Password123',
     required: true,
   })
   @IsNotEmpty()
   @IsString()
-  @MinLength(8)
-  @Matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/, {
-    message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
-  })
   password: string;
 
   @ApiProperty({
-    description: 'User\'s first name',
+    description: "User's first name",
     example: 'John',
     required: true,
   })
   @IsNotEmpty()
   @IsString()
-  @Matches(/^[a-zA-Z\s-']+$/, {
-    message: 'First name can only contain letters, spaces, hyphens, and apostrophes',
-  })
   firstName: string;
 
   @ApiPropertyOptional({
-    description: 'User\'s middle name',
+    description: "User's middle name",
     example: 'William',
     required: false,
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[a-zA-Z\s-']*$/, {
-    message: 'Middle name can only contain letters, spaces, hyphens, and apostrophes',
-  })
   middleName?: string;
 
   @ApiProperty({
-    description: 'User\'s last name',
+    description: "User's last name",
     example: 'Doe',
     required: true,
   })
   @IsNotEmpty()
   @IsString()
-  @Matches(/^[a-zA-Z\s-']+$/, {
-    message: 'Last name can only contain letters, spaces, hyphens, and apostrophes',
-  })
   lastName: string;
 
   @ApiPropertyOptional({
@@ -96,7 +82,6 @@ export class CreateUserDto {
     required: false,
   })
   @IsOptional()
-  @IsBooleanString()
   isActive: string = 'true';
 
   @ApiPropertyOptional({
@@ -105,7 +90,6 @@ export class CreateUserDto {
     required: false,
   })
   @IsOptional()
-  @IsBoolean()
   isReported: boolean = false;
 
   @ApiPropertyOptional({
@@ -127,5 +111,6 @@ export class CreateUserDto {
   @IsObject()
   preferences?: Record<string, any>;
 
-  role: AccountRole
+  @IsString()
+  role: AccountRole;
 }

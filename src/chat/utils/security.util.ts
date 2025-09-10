@@ -2,8 +2,11 @@ export class SecurityUtil {
   private static readonly MAX_MESSAGE_LENGTH = 1000;
   private static readonly MAX_MESSAGES_PER_MINUTE = 20;
   private static readonly BLOCKED_WORDS = ['spam', 'bot', 'fake'];
-  
-  private static userMessageCounts = new Map<number, { count: number; resetTime: number }>();
+
+  private static userMessageCounts = new Map<
+    number,
+    { count: number; resetTime: number }
+  >();
 
   /**
    * Check if user is rate limited
@@ -44,7 +47,7 @@ export class SecurityUtil {
     filtered = filtered.replace(/<[^>]*>/g, '');
 
     // Filter blocked words
-    this.BLOCKED_WORDS.forEach(word => {
+    this.BLOCKED_WORDS.forEach((word) => {
       const regex = new RegExp(word, 'gi');
       filtered = filtered.replace(regex, '*'.repeat(word.length));
     });
@@ -81,13 +84,24 @@ export class SecurityUtil {
   /**
    * Validate file upload
    */
-  static validateFileUpload(filename: string, mimeType: string, size: number): boolean {
+  static validateFileUpload(
+    filename: string,
+    mimeType: string,
+    size: number,
+  ): boolean {
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     const ALLOWED_TYPES = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/webm',
-      'audio/mp3', 'audio/wav', 'audio/ogg',
-      'application/pdf', 'text/plain'
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/webm',
+      'audio/mp3',
+      'audio/wav',
+      'audio/ogg',
+      'application/pdf',
+      'text/plain',
     ];
 
     // Check file size
@@ -119,4 +133,4 @@ export class SecurityUtil {
       }
     }
   }
-} 
+}

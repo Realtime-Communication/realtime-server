@@ -3,11 +3,20 @@ import { Type, Transform } from 'class-transformer';
 import { FriendStatus } from '@prisma/client';
 
 export class FriendSearchDto {
+  @Transform(({ value }) => {
+    const num = Number(value);
+    return isNaN(num) ? 1 : Math.max(1, Math.floor(num));
+  })
   @Type(() => Number)
   @IsNumber({}, { message: 'Page must be a number' })
   page: number = 1;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null) return 10;
+    const num = Number(value);
+    return isNaN(num) ? 10 : Math.max(1, Math.min(100, Math.floor(num)));
+  })
   @Type(() => Number)
   @IsNumber({}, { message: 'Size must be a number' })
   size: number = 10;

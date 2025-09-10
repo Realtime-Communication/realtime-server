@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-// decorators/account-request.decorator.ts
+import { AccountRole } from '@prisma/client';
 
 export const AccountRequest = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): TAccountRequest => {
@@ -14,11 +14,12 @@ export const AccountRequest = createParamDecorator(
   },
   
 );
-// role: AccountRole;
+
 export type TAccountRequest = {
   id: number;
-  firstName: string;
-  lastName: string;
-  type;
-  socketId;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  type: AccountRole | string;
+  socketId?: string;
 };

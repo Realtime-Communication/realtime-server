@@ -709,8 +709,8 @@ export class FriendsService {
             },
           },
         },
-        take: pageable.size,
-        skip: (pageable.page - 1) * pageable.size,
+        take: +pageable.size,
+        skip: (+pageable.page - 1) * +pageable.size,
       }),
       this.prismaService.friend.count({
         where: {
